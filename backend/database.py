@@ -1,8 +1,18 @@
+import os
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
-engine = create_engine("sqlite:///./fitsolo.db", connect_args={"check_same_thread": False})
+# Берём DATABASE_URL из переменных окружения (на Render)
+# Если её нет — падаем на локальный SQLite (для разработки)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fitsolo.db")
+
+# Для SQLite нужен connect_args, для PostgreSQL — нет
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
@@ -37,4 +47,3 @@ class WorkoutLog(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    
