@@ -1,4 +1,4 @@
-const API = "http://103.76.53.84:8000";
+const API = "https://103.76.53.84.nip.io";
 let userId = localStorage.getItem("userId");
 let chatHistory = [];
 let statsCharts = [];
