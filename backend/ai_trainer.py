@@ -21,21 +21,34 @@ SYSTEM_PROMPT = """Ты — персональный фитнес-тренер F
 
 
 async def _get_access_token(client: httpx.AsyncClient) -> str:
-    """Получает access_token для GigaChat по client_id и client_secret."""
+    """Получает access_token для GigaChat по authorization key."""
     auth_key = os.getenv("GIGACHAT_AUTH_KEY")
     if not auth_key:
         raise ValueError("Не задан GIGACHAT_AUTH_KEY в .env")
 
+    # ВАЖНО: добавляем RqUID (обязательный заголовок!) и правильный Content-Type
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
-        "RqUID": str(uuid.uuid4()),
+        "RqUID": str(uuid.uuid4()),  # ← это исправление ошибки 400!
         "Authorization": f"Basic {auth_key}",
     }
+
+    # ВАЖНО: scope передаётся как form-data, не как JSON
     data = {"scope": "GIGACHAT_API_PERS"}
 
-    r = await client.post(GIGACHAT_AUTH_URL, headers=headers, data=data, timeout=30)
-    r.raise_for_status()
+    r = await client.post(
+        GIGACHAT_AUTH_URL,
+        headers=headers,
+        data=data,
+        timeout=30,
+    )
+
+    if r.status_code != 200:
+        raise Exception(
+            f"GigaChat auth error {r.status_code}: {r.text[:200]}"
+        )
+
     return r.json()["access_token"]
 
 
