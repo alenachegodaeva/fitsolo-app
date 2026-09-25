@@ -409,6 +409,7 @@ async function loadStats() {
     });
     statsCharts.push(chart);
   });
+}
   // ===== ПИТАНИЕ =====
 async function loadNutrition() {
   if (!userId) return;
@@ -586,7 +587,7 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
   f.reset();
   loadMeals();
 });
-}// ===== КНОПКА "ИЗМЕНИТЬ ПРОФИЛЬ" =====
+// ===== КНОПКА "ИЗМЕНИТЬ ПРОФИЛЬ" =====
 document.getElementById("edit-profile").addEventListener("click", () => {
   if (confirm("Изменить профиль? Потребуется заполнить анкету заново.")) {
     localStorage.removeItem("userId");
