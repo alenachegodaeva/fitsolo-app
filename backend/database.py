@@ -46,9 +46,22 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    role = Column(String)      # "user" или "assistant"
+    role = Column(String)
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Meal(Base):
+    __tablename__ = "meals"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    date = Column(DateTime, default=datetime.utcnow)
+    name = Column(String)
+    grams = Column(Float)
+    calories = Column(Float)
+    protein = Column(Float)
+    fat = Column(Float)
+    carbs = Column(Float)
 
 
 def init_db():
