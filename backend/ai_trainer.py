@@ -66,9 +66,8 @@ async def ask_ai_trainer(user_message: str, profile: dict, history: list = None)
     )
 
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "system", "content": context},
-    ]
+    {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context},
+]
     if history:
         messages.extend(history[-6:])
     messages.append({"role": "user", "content": user_message})
