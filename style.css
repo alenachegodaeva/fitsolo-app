@@ -421,4 +421,46 @@ form button[type="submit"] { width: 100%; padding: 14px; font-size: 16px; }
 @media (max-width: 500px) {
   .kbju-grid { grid-template-columns: 1fr 1fr; }
 }  
+/* ===== ПОИСК ПРОДУКТОВ ===== */
+.food-search-wrap { position: relative; margin-bottom: 12px; }
+#food-search {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 15px;
+}
+#food-search:focus { outline: none; border-color: var(--accent); }
+.food-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 4px 12px var(--shadow);
+}
+.food-dropdown:empty { display: none; }
+.food-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.food-item:last-child { border-bottom: none; }
+.food-item:hover { background: var(--bg-input); }
+.food-item .food-name { font-weight: 600; }
+.food-item .food-cat { color: var(--text-muted); font-size: 12px; }
+.food-item .food-kbju { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
 }

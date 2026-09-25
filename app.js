@@ -489,6 +489,84 @@ async function loadMeals() {
 }
 
 // обработчик формы еды
+// ===== ПОИСК ПРОДУКТОВ =====
+const foodSearchInput = document.getElementById("food-search");
+const foodDropdown = document.getElementById("food-dropdown");
+let searchTimer = null;
+
+foodSearchInput.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  const q = foodSearchInput.value.trim();
+  if (q.length < 2) {
+    foodDropdown.innerHTML = "";
+    return;
+  }
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`${API}/api/foods?q=${encodeURIComponent(q)}`);
+      const foods = await res.json();
+      foodDropdown.innerHTML = foods.map(f => `
+        <div class="food-item" data-name="${f.name}" data-cal="${f.calories}" data-p="${f.protein}" data-f="${f.fat}" data-c="${f.carbs}">
+          <div>
+            <div class="food-name">${f.name}</div>
+            <div class="food-cat">${f.category}</div>
+          </div>
+          <div class="food-kbju">${f.calories} ккал · Б${f.protein} Ж${f.fat} У${f.carbs}</div>
+        </div>
+      `).join("");
+      foodDropdown.querySelectorAll(".food-item").forEach(el => {
+        el.addEventListener("click", () => pickFood(el.dataset));
+      });
+    } catch (err) {
+      console.error("Поиск продуктов не удался:", err);
+    }
+  }, 250);
+});
+
+// Клик вне поля — закрыть подсказки
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".food-search-wrap")) {
+    foodDropdown.innerHTML = "";
+  }
+});
+
+function pickFood(ds) {
+  const form = document.getElementById("meal-form");
+  form.name.value = ds.name;
+  form.grams.value = 100;
+  form.calories.value = ds.cal;
+  form.protein.value = ds.p;
+  form.fat.value = ds.f;
+  form.carbs.value = ds.c;
+
+  // Сохраняем базовые значения (на 100 г) для пересчёта
+  form.calories.dataset.base = ds.cal;
+  form.protein.dataset.base = ds.p;
+  form.fat.dataset.base = ds.f;
+  form.carbs.dataset.base = ds.c;
+
+  foodSearchInput.value = "";
+  foodDropdown.innerHTML = "";}
+  // Пересчёт КБЖУ при изменении граммов
+const mealForm = document.getElementById("meal-form");
+mealForm.grams.addEventListener("input", recalcMacros);
+
+
+function recalcMacros() {
+  const form = document.getElementById("meal-form");
+  const baseGrams = 100;
+  const newGrams = parseFloat(form.grams.value) || 0;
+  const k = newGrams / baseGrams;
+  const baseCal = parseFloat(form.calories.dataset.base) || parseFloat(form.calories.value);
+  const baseP = parseFloat(form.protein.dataset.base) || parseFloat(form.protein.value);
+  const baseF = parseFloat(form.fat.dataset.base) || parseFloat(form.fat.value);
+  const baseC = parseFloat(form.carbs.dataset.base) || parseFloat(form.carbs.value);
+
+  form.calories.value = (baseCal * k).toFixed(1);
+  form.protein.value = (baseP * k).toFixed(1);
+  form.fat.value = (baseF * k).toFixed(1);
+  form.carbs.value = (baseC * k).toFixed(1);
+}
 document.getElementById("meal-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;

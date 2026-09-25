@@ -142,6 +142,10 @@
 
       <h3>Добавить приём пищи</h3>
       <form id="meal-form">
+        <div class="food-search-wrap">
+          <input id="food-search" placeholder="🔍 Поиск продукта..." autocomplete="off">
+        <div id="food-dropdown" class="food-dropdown"></div>
+        </div>
         <input name="name" placeholder="Что съел?" required>
         <div class="row">
           <input name="grams" type="number" step="1" placeholder="Граммы" required>
