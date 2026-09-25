@@ -145,7 +145,7 @@ form button[type="submit"] { width: 100%; padding: 14px; font-size: 16px; }
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   margin-bottom: 20px;
 }
@@ -347,4 +347,78 @@ form button[type="submit"] { width: 100%; padding: 14px; font-size: 16px; }
 #edit-profile {
   padding: 6px 12px;
   font-size: 13px;
+/* ===== ПИТАНИЕ ===== */
+.kbju-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.kbju-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  box-shadow: 0 2px 6px var(--shadow);
+}
+.kbju-card .label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.kbju-card .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+.kbju-card .value.cal { color: var(--accent); }
+.kbju-card .value.protein { color: #e74c3c; }
+.kbju-card .value.fat { color: #f39c12; }
+.kbju-card .value.carbs { color: #3498db; }
+
+.nutrition-progress {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.nutrition-progress .bar-wrap {
+  background: var(--bg-input);
+  height: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.nutrition-progress .bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.4s;
+}
+.nutrition-progress .bar-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.meal-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+.meal-item .meal-info { flex: 1; }
+.meal-item .meal-macros { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.meal-delete {
+  background: transparent;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+}
+.meal-delete:hover { color: #c0392b; }
+
+@media (max-width: 500px) {
+  .kbju-grid { grid-template-columns: 1fr 1fr; }
+}  
 }

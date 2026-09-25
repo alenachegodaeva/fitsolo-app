@@ -130,6 +130,7 @@ document.querySelectorAll(".tab").forEach(t => {
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
     if (t.dataset.tab === "stats") loadStats();
+    if (t.dataset.tab === "nutrition") loadNutrition();
   });
 });
 
@@ -408,6 +409,105 @@ async function loadStats() {
     });
     statsCharts.push(chart);
   });
+  // ===== ПИТАНИЕ =====
+async function loadNutrition() {
+  if (!userId) return;
+  try {
+    const res = await fetch(`${API}/api/nutrition/${userId}`);
+    const n = await res.json();
+    const el = document.getElementById("nutrition-norm");
+    el.innerHTML = `
+      <div class="kbju-grid">
+        <div class="kbju-card"><div class="label">Калории</div><div class="value cal">${n.target_calories}</div></div>
+        <div class="kbju-card"><div class="label">Белки</div><div class="value protein">${n.protein} г</div></div>
+        <div class="kbju-card"><div class="label">Жиры</div><div class="value fat">${n.fat} г</div></div>
+        <div class="kbju-card"><div class="label">Углеводы</div><div class="value carbs">${n.carbs} г</div></div>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Не удалось загрузить норму КБЖУ:", err);
+  }
+}
+
+async function loadMeals() {
+  if (!userId) return;
+  try {
+    const res = await fetch(`${API}/api/meals/${userId}`);
+    const meals = await res.json();
+
+    // считаем сумму за сегодня
+    const today = new Date().toDateString();
+    const todayMeals = meals.filter(m => new Date(m.date).toDateString() === today);
+    const total = todayMeals.reduce((acc, m) => ({
+      calories: acc.calories + (m.calories || 0),
+      protein: acc.protein + (m.protein || 0),
+      fat: acc.fat + (m.fat || 0),
+      carbs: acc.carbs + (m.carbs || 0),
+    }), { calories: 0, protein: 0, fat: 0, carbs: 0 });
+
+    // норма
+    const normRes = await fetch(`${API}/api/nutrition/${userId}`);
+    const norm = await normRes.json();
+    const pct = Math.min(100, Math.round((total.calories / norm.target_calories) * 100));
+
+    const listEl = document.getElementById("meals-list");
+    listEl.innerHTML = `
+      <div class="nutrition-progress">
+        <div class="bar-info">
+          <span>Съедено: <strong>${Math.round(total.calories)}</strong> / ${norm.target_calories} ккал</span>
+          <span>${pct}%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-info" style="margin-top:6px;">
+          <span>Б: ${Math.round(total.protein)} / ${norm.protein}</span>
+          <span>Ж: ${Math.round(total.fat)} / ${norm.fat}</span>
+          <span>У: ${Math.round(total.carbs)} / ${norm.carbs}</span>
+        </div>
+      </div>
+      ${todayMeals.length ? todayMeals.map(m => `
+        <div class="meal-item">
+          <div class="meal-info">
+            <strong>${m.name}</strong> — ${m.grams} г
+            <div class="meal-macros">${Math.round(m.calories)} ккал · Б ${m.protein} · Ж ${m.fat} · У ${m.carbs}</div>
+          </div>
+          <button class="meal-delete" data-id="${m.id}" title="Удалить">✕</button>
+        </div>
+      `).join("") : "<p class='hint'>Сегодня ещё ничего не добавлено</p>"}
+    `;
+
+    listEl.querySelectorAll(".meal-delete").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (confirm("Удалить запись?")) {
+          await fetch(`${API}/api/meal/${btn.dataset.id}`, { method: "DELETE" });
+          loadMeals();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("Не удалось загрузить приёмы пищи:", err);
+  }
+}
+
+// обработчик формы еды
+document.getElementById("meal-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  await fetch(`${API}/api/meal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: +userId,
+      name: f.name.value,
+      grams: +f.grams.value,
+      calories: +f.calories.value,
+      protein: +f.protein.value,
+      fat: +f.fat.value,
+      carbs: +f.carbs.value,
+    }),
+  });
+  f.reset();
+  loadMeals();
+});
 }// ===== КНОПКА "ИЗМЕНИТЬ ПРОФИЛЬ" =====
 document.getElementById("edit-profile").addEventListener("click", () => {
   if (confirm("Изменить профиль? Потребуется заполнить анкету заново.")) {
