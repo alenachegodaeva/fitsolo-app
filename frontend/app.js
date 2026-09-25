@@ -1,4 +1,4 @@
-const API = "http://103.76.53.84:8000";
+const API = "https://103.76.53.84.nip.io";
 let userId = localStorage.getItem("userId");
 let chatHistory = [];
 let statsCharts = [];
@@ -237,6 +237,36 @@ document.getElementById("export-btn").addEventListener("click", () => {
 });
 
 // ===== ИИ-ЧАТ =====
+// ===== ИСТОРИЯ ЧАТА =====
+async function loadChatHistory() {
+  if (!userId) return;
+  try {
+    const res = await fetch(`${API}/api/chat/history/${userId}`);
+    const history = await res.json();
+    const box = document.getElementById("chat-messages");
+    box.innerHTML = "";
+    chatHistory = [];
+    history.forEach(m => {
+      addMsg(m.content, m.role === "user" ? "user" : "ai");
+      chatHistory.push({ role: m.role, content: m.content });
+    });
+  } catch (err) {
+    console.error("Не удалось загрузить историю чата:", err);
+  }
+}
+
+async function clearChatHistory() {
+  if (!userId) return;
+  if (!confirm("Очистить всю историю чата с тренером?")) return;
+  try {
+    await fetch(`${API}/api/chat/history/${userId}`, { method: "DELETE" });
+    document.getElementById("chat-messages").innerHTML = "";
+    chatHistory = [];
+    addMsg("История очищена. Задай новый вопрос! 💪", "ai");
+  } catch (err) {
+    alert("Не удалось очистить историю");
+  }
+}
 const chatBox = document.getElementById("chat-messages");
 
 function addMsg(text, who) {

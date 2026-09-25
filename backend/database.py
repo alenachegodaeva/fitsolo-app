@@ -3,11 +3,8 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, 
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
-# Берём DATABASE_URL из переменных окружения (на Render)
-# Если её нет — падаем на локальный SQLite (для разработки)
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fitsolo.db")
 
-# Для SQLite нужен connect_args, для PostgreSQL — нет
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
@@ -43,6 +40,15 @@ class WorkoutLog(Base):
     reps = Column(Integer)
     sets = Column(Integer)
     notes = Column(Text)
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    role = Column(String)      # "user" или "assistant"
+    content = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 def init_db():

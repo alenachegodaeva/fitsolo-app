@@ -58,6 +58,7 @@
         <legend>Доступное оборудование</legend>
         <div class="checkbox-grid">
           <label><input type="checkbox" value="barbell" checked> Штанга</label>
+          <label><input type="checkbox" value="kettlebell"> Гиря</label>
           <label><input type="checkbox" value="dumbbells" checked> Гантели</label>
           <label><input type="checkbox" value="machines" checked> Тренажёры</label>
           <label><input type="checkbox" value="bench"> Скамья</label>
@@ -99,6 +100,9 @@
     </div>
 
     <div id="tab-chat" class="tab-content">
+        <div class="chat-header" style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+    <button id="clear-chat" class="btn-secondary" style="font-size:13px; padding:6px 12px;">🗑 Очистить историю</button>
+  </div>
       <div id="chat-messages"></div>
       <div class="chat-input">
         <input id="chat-text" placeholder="Спроси тренера...">
@@ -145,3 +149,5 @@
   </script>
 </body>
 </html>
+
+

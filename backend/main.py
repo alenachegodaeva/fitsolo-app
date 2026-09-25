@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import init_db, SessionLocal, User, WorkoutLog
+from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
 
@@ -95,8 +95,58 @@ def get_plan(user_id: int):
 @app.post("/api/chat")
 async def chat(c: ChatIn):
     profile = get_profile(c.user_id)
-    reply = await ask_ai_trainer(c.message, profile, c.history)
+
+    # 1. Берём последние 10 сообщений из БД (для контекста)
+    db = SessionLocal()
+    db_messages = (
+        db.query(ChatMessage)
+        .filter_by(user_id=c.user_id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    history = [{"role": m.role, "content": m.content} for m in db_messages][-10:]
+
+    # 2. Сохраняем сообщение пользователя
+    db.add(ChatMessage(user_id=c.user_id, role="user", content=c.message))
+    db.commit()
+    db.close()
+
+    # 3. Спрашиваем ИИ
+    reply = await ask_ai_trainer(c.message, profile, history)
+
+    # 4. Сохраняем ответ тренера
+    db = SessionLocal()
+    db.add(ChatMessage(user_id=c.user_id, role="assistant", content=reply))
+    db.commit()
+    db.close()
+
     return {"reply": reply}
+
+
+@app.get("/api/chat/history/{user_id}")
+def get_chat_history(user_id: int):
+    db = SessionLocal()
+    rows = (
+        db.query(ChatMessage)
+        .filter_by(user_id=user_id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    db.close()
+    return [
+        {"id": r.id, "role": r.role, "content": r.content,
+         "date": r.created_at.isoformat()}
+        for r in rows
+    ]
+
+
+@app.delete("/api/chat/history/{user_id}")
+def clear_chat_history(user_id: int):
+    db = SessionLocal()
+    db.query(ChatMessage).filter_by(user_id=user_id).delete()
+    db.commit()
+    db.close()
+    return {"ok": True}
 
 
 @app.post("/api/log")
