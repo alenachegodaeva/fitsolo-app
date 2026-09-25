@@ -1,4 +1,5 @@
 import json
+import random
 from pathlib import Path
 from typing import Dict, List
 
@@ -60,7 +61,13 @@ def get_params(goal: str, experience: str) -> Dict:
 
 def split_muscles(split: str, day: int) -> List[str]:
     if split == "full_body":
-        return ["chest", "back", "legs", "shoulders", "core"]
+        # разные акценты по дням
+        variants = [
+            ["chest", "back", "legs", "core"],
+            ["legs", "shoulders", "back", "core"],
+            ["chest", "shoulders", "legs", "biceps", "triceps"],
+        ]
+        return variants[(day - 1) % 3]
     if split == "upper_lower":
         return [["chest", "back", "shoulders", "biceps", "triceps"],
                 ["legs", "core"]][(day - 1) % 2]
@@ -70,13 +77,27 @@ def split_muscles(split: str, day: int) -> List[str]:
 
 
 def pick_exercises_by_muscles(pool: List[Dict], muscles: List[str], max_per_muscle: int = 2) -> List[Dict]:
+    """
+    Выбирает случайные упражнения для каждой мышцы.
+    - Убирает повторы имён (если упражнение уже выбрано — не берём снова).
+    - Использует random.sample для уникальности.
+    """
     chosen = []
+    used_names = set()
+
     for m in muscles:
-        count = 0
-        for ex in pool:
-            if ex["muscle"] == m and count < max_per_muscle:
-                chosen.append(ex)
-                count += 1
+        candidates = [
+            ex for ex in pool
+            if ex["muscle"] == m and ex["name"] not in used_names
+        ]
+        # перемешиваем и берём до max_per_muscle упражнений
+        random.shuffle(candidates)
+        for ex in candidates[:max_per_muscle]:
+            chosen.append(ex)
+            used_names.add(ex["name"])
+
+    # Финальный шаг: немного перемешать, чтобы упражнения не шли строго по группам
+    random.shuffle(chosen)
     return chosen[:7]
 
 
@@ -119,7 +140,7 @@ def generate_plan(user: Dict) -> Dict:
             })
 
         if params["cardio_min"] > 0 and cardio_pool:
-            cardio = cardio_pool[day % len(cardio_pool)]
+            cardio = random.choice(cardio_pool)
             exercises.append({
                 "name": f"Кардио: {cardio['name']}",
                 "sets": 1,
