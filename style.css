@@ -464,3 +464,53 @@ form button[type="submit"] { width: 100%; padding: 14px; font-size: 16px; }
 .food-item .food-cat { color: var(--text-muted); font-size: 12px; }
 .food-item .food-kbju { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
 }
+/* ===== ИСТОРИЯ ПИТАНИЯ ===== */
+.history-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.history-switch .btn-secondary {
+  padding: 8px 16px;
+  font-size: 13px;
+  flex: 0 0 auto;
+}
+.history-switch .btn-secondary.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.history-day {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+.history-day.today {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+.history-day .h-date {
+  color: var(--text-muted);
+  font-size: 13px;
+  min-width: 90px;
+}
+.history-day .h-cal {
+  font-weight: 600;
+}
+.history-day .h-cal.over {
+  color: #e74c3c;
+}
+.history-day .h-cal.empty {
+  color: var(--text-muted);
+}
+.history-day .h-macros {
+  color: var(--text-muted);
+  font-size: 12px;
+}

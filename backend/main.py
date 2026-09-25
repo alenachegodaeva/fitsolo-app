@@ -340,3 +340,73 @@ def search_foods(q: str = ""):
     return foods[:30]
 
 
+   
+
+@app.get("/api/meals/history/{user_id}")
+def get_meals_history(user_id: int, days: int = 7):
+    """Возвращает приёмы пищи за последние N дней, сгруппированные по датам."""
+    from datetime import datetime, timedelta
+
+    db = SessionLocal()
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    rows = (
+        db.query(Meal)
+        .filter(Meal.user_id == user_id, Meal.date >= cutoff)
+        .order_by(Meal.date.asc())
+        .all()
+    )
+    db.close()
+
+    # Группируем по дате (YYYY-MM-DD)
+    by_day = {}
+    for r in rows:
+        day = r.date.date().isoformat()
+        if day not in by_day:
+            by_day[day] = {
+                "date": day,
+                "calories": 0,
+                "protein": 0,
+                "fat": 0,
+                "carbs": 0,
+                "meals_count": 0,
+            }
+        by_day[day]["calories"] += r.calories or 0
+        by_day[day]["protein"] += r.protein or 0
+        by_day[day]["fat"] += r.fat or 0
+        by_day[day]["carbs"] += r.carbs or 0
+        by_day[day]["meals_count"] += 1
+
+    # Заполняем пропущенные дни нулями
+    result = []
+    today = datetime.utcnow().date()
+    for i in range(days - 1, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        if d in by_day:
+            entry = by_day[d]
+            entry["calories"] = round(entry["calories"])
+            entry["protein"] = round(entry["protein"], 1)
+            entry["fat"] = round(entry["fat"], 1)
+            entry["carbs"] = round(entry["carbs"], 1)
+            result.append(entry)
+        else:
+            result.append({
+                "date": d, "calories": 0, "protein": 0,
+                "fat": 0, "carbs": 0, "meals_count": 0,
+            })
+
+    # Средние значения по дням, где что-то ели
+    days_with_food = [r for r in result if r["meals_count"] > 0]
+    if days_with_food:
+        avg = {
+            "calories": round(sum(r["calories"] for r in days_with_food) / len(days_with_food)),
+            "protein": round(sum(r["protein"] for r in days_with_food) / len(days_with_food), 1),
+            "fat": round(sum(r["fat"] for r in days_with_food) / len(days_with_food), 1),
+            "carbs": round(sum(r["carbs"] for r in days_with_food) / len(days_with_food), 1),
+            "days_tracked": len(days_with_food),
+        }
+    else:
+        avg = {"calories": 0, "protein": 0, "fat": 0, "carbs": 0, "days_tracked": 0}
+
+    return {"days": result, "average": avg} 
+
+

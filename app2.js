@@ -100,6 +100,9 @@ async function showMain() {
   loadPlan();
   loadLogs();
   loadChatHistory();
+  loadNutrition();
+  loadMeals();
+  loadMealsHistory();
 }
 
 async function loadProfileName() {
@@ -489,7 +492,108 @@ async function loadMeals() {
   }
 }
 
-// обработчик формы еды
+
+// ===== ИСТОРИЯ ПИТАНИЯ =====
+let nutritionChart = null;
+let historyDays = 7;
+
+async function loadMealsHistory(days = historyDays) {
+  if (!userId) return;
+  historyDays = days;
+
+  // Подсветка активной кнопки
+  document.getElementById("hist-7").classList.toggle("active", days === 7);
+  document.getElementById("hist-30").classList.toggle("active", days === 30);
+
+  try {
+    const res = await fetch(`${API}/api/meals/history/${userId}?days=${days}`);
+    const data = await res.json();
+
+    // Сводка
+    const avg = data.average;
+    const summaryEl = document.getElementById("history-summary");
+    if (avg.days_tracked > 0) {
+      summaryEl.innerHTML = `
+        <div class="bar-info">
+          <span>📊 Среднее за день:</span>
+          <span><strong>${avg.calories}</strong> ккал</span>
+        </div>
+        <div class="bar-info" style="margin-top:6px;">
+          <span>Б: ${avg.protein} г</span>
+          <span>Ж: ${avg.fat} г</span>
+          <span>У: ${avg.carbs} г</span>
+        </div>
+        <div class="bar-info" style="margin-top:6px; color: var(--text-muted); font-size:12px;">
+          <span>Дней с записями: ${avg.days_tracked} из ${days}</span>
+        </div>
+      `;
+    } else {
+      summaryEl.innerHTML = `<p class="hint">Добавь приёмы пищи, чтобы увидеть статистику 📈</p>`;
+    }
+
+    // График
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue("--text").trim();
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+
+    if (nutritionChart) nutritionChart.destroy();
+
+    const ctx = document.getElementById("nutrition-history-chart");
+    nutritionChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: data.days.map(d => {
+          const dt = new Date(d.date);
+          return dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+        }),
+        datasets: [{
+          label: "Ккал",
+          data: data.days.map(d => d.calories),
+          backgroundColor: accent + "cc",
+          borderColor: accent,
+          borderWidth: 1,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: textColor + "22" }, beginAtZero: true },
+        },
+      },
+    });
+
+    // Список по дням
+    const daysEl = document.getElementById("history-days");
+    const todayStr = new Date().toISOString().slice(0, 10);
+    daysEl.innerHTML = data.days.slice().reverse().map(d => {
+      const date = new Date(d.date);
+      const dateStr = date.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", weekday: "short" });
+      const isEmpty = d.meals_count === 0;
+      const isToday = d.date === todayStr;
+      return `
+        <div class="history-day ${isToday ? "today" : ""}">
+          <div>
+            <div class="h-date">${dateStr}${isToday ? " · сегодня" : ""}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="h-cal ${isEmpty ? "empty" : ""}">${d.calories} ккал</div>
+            ${!isEmpty ? `<div class="h-macros">Б${d.protein} · Ж${d.fat} · У${d.carbs}</div>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch (err) {
+    console.error("Не удалось загрузить историю питания:", err);
+  }
+}
+
+// Кнопки переключения 7/30 дней
+document.getElementById("hist-7").addEventListener("click", () => loadMealsHistory(7));
+document.getElementById("hist-30").addEventListener("click", () => loadMealsHistory(30));
+
 // ===== ПОИСК ПРОДУКТОВ =====
 const foodSearchInput = document.getElementById("food-search");
 const foodDropdown = document.getElementById("food-dropdown");
@@ -585,7 +689,8 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
     }),
   });
   f.reset();
-  loadMeals();
+   loadMeals();
+  loadMealsHistory();
 });
 // ===== КНОПКА "ИЗМЕНИТЬ ПРОФИЛЬ" =====
 document.getElementById("edit-profile").addEventListener("click", () => {

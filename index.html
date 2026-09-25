@@ -163,6 +163,18 @@
 
       <h3 class="log-title">Съедено сегодня</h3>
       <div id="meals-list"></div>
+              <h3 class="log-title">📊 История питания</h3>
+        <div class="history-switch">
+          <button id="hist-7" class="btn-secondary active">7 дней</button>
+          <button id="hist-30" class="btn-secondary">30 дней</button>
+        </div>
+        <div class="nutrition-progress" id="history-summary">
+          <p class="hint">Загружаю...</p>
+        </div>
+        <div class="chart-wrapper" style="height: 220px; margin-bottom: 16px;">
+          <canvas id="nutrition-history-chart"></canvas>
+        </div>
+        <div id="history-days"></div>
     </div>
   </section>
 
