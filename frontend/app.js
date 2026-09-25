@@ -99,21 +99,7 @@ async function showMain() {
   await loadProfileName();
   loadPlan();
   loadLogs();
-}
-async function showMain() {
-  document.getElementById("onboarding").classList.remove("active");
-  document.getElementById("main").classList.add("active");
-  await loadProfileName();
-  loadPlan();
-  loadLogs();
-}
-
-async function showMain() {
-  document.getElementById("onboarding").classList.remove("active");
-  document.getElementById("main").classList.add("active");
-  await loadProfileName();
-  loadPlan();
-  loadLogs();
+  loadChatHistory();
 }
 
 async function loadProfileName() {
