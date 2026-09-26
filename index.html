@@ -14,6 +14,88 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+
+  <!-- ===== ЛЕНДИНГ ===== -->
+  <section id="landing" class="screen landing">
+    <div class="landing-hero">
+      <div class="landing-logo">🏋️</div>
+      <h1 class="landing-title">FitSolo</h1>
+      <p class="landing-tagline">Твой ИИ-тренер в кармане</p>
+      <p class="landing-subtitle">
+        Персональные тренировки, питание и прогресс —<br>
+        всё в одном приложении.<br>
+        Без зала, без тренера, без подписок.
+      </p>
+      <div class="landing-cta">
+        <button id="landing-start" class="btn-primary landing-btn">🚀 Начать бесплатно</button>
+        <button id="landing-login" class="btn-secondary landing-btn">🔑 Войти</button>
+      </div>
+    </div>
+
+    <div class="landing-features">
+      <div class="landing-feature">
+        <div class="landing-feature-icon">🤖</div>
+        <h3>ИИ-тренер</h3>
+        <p>Задай вопрос — получи ответ.<br>«Как приседать без травм?»<br>«Что есть после тренировки?»</p>
+      </div>
+      <div class="landing-feature">
+        <div class="landing-feature-icon">📋</div>
+        <h3>План под тебя</h3>
+        <p>Оборудование, цель, опыт —<br>всё учитывается.<br>План обновляется, когда меняешься ты.</p>
+      </div>
+      <div class="landing-feature">
+        <div class="landing-feature-icon">📊</div>
+        <h3>Прогресс видно</h3>
+        <p>Графики, фото, достижения, календарь.<br>Не «кажется, стал сильнее» —<br>а «жим вырос на 10 кг».</p>
+      </div>
+    </div>
+
+    <div class="landing-how">
+      <h2>Как это работает</h2>
+      <div class="landing-steps">
+        <div class="landing-step">
+          <div class="landing-step-num">1</div>
+          <div class="landing-step-body">
+            <h4>Заполни профиль</h4>
+            <p>Возраст, вес, цель, оборудование — 30 секунд.</p>
+          </div>
+        </div>
+        <div class="landing-step">
+          <div class="landing-step-num">2</div>
+          <div class="landing-step-body">
+            <h4>Получи план</h4>
+            <p>ИИ соберёт программу под тебя. Мгновенно.</p>
+          </div>
+        </div>
+        <div class="landing-step">
+          <div class="landing-step-num">3</div>
+          <div class="landing-step-body">
+            <h4>Тренируйся</h4>
+            <p>Записывай подходы, питание, фото. Всё в одном месте.</p>
+          </div>
+        </div>
+        <div class="landing-step">
+          <div class="landing-step-num">4</div>
+          <div class="landing-step-body">
+            <h4>Смотри прогресс</h4>
+            <p>Графики, достижения, аналитика по группам мышц.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-final">
+      <h2>Готов начать?</h2>
+      <p>Бесплатно. Без рекламы. Твои данные — только твои.</p>
+      <button id="landing-start-2" class="btn-primary landing-btn">🚀 Начать бесплатно</button>
+    </div>
+
+    <footer class="landing-footer">
+      <div>🏋️ <strong>FitSolo</strong> © 2026</div>
+      <div class="landing-footer-sub">Твой ИИ-тренер · alenachegodaeva.github.io/fitsolo-app</div>
+    </footer>
+  </section>
+
   <header>
     <div class="header-inner">
       <h1>🏋️ FitSolo</h1>
@@ -23,7 +105,7 @@
   </header>
 
   <!-- ===== ЭКРАН АВТОРИЗАЦИИ ===== -->
-  <section id="auth" class="screen active">
+  <section id="auth" class="screen">
     <h2>Добро пожаловать в FitSolo</h2>
     <p style="color:var(--text-muted); margin-bottom:20px;">Войди или создай аккаунт — и тренируйся с любого устройства</p>
 
@@ -97,7 +179,7 @@
     </form>
   </section>
 
-  <!-- ===== ОНБОРДИНГ (не используется, на всякий случай) ===== -->
+  <!-- ===== ОНБОРДИНГ (не используется) ===== -->
   <section id="onboarding" class="screen">
     <h2>Расскажи о себе</h2>
     <form id="profile-form">
@@ -219,6 +301,7 @@
           Пока нет фото. Нажми «+ Добавить», чтобы начать отслеживать прогресс 📸
         </div>
       </div>
+
       <!-- 💪 АНАЛИТИКА ПО ГРУППАМ МЫШЦ -->
       <div id="muscles-block" style="margin-top:28px;">
         <div class="muscles-header">
@@ -243,6 +326,7 @@
 
         <div id="muscles-recommendations"></div>
       </div>
+
       <div id="stats-content" style="margin-top:28px;">
         <p class="hint">Добавь записи в дневник, чтобы увидеть статистику 📈</p>
       </div>
@@ -288,9 +372,10 @@
       </div>
       <div id="history-days"></div>
     </div>
-        <!-- КАЛЕНДАРЬ -->
+
+    <!-- КАЛЕНДАРЬ -->
     <div id="tab-calendar" class="tab-content">
-            <div class="calendar-header">
+      <div class="calendar-header">
         <button id="cal-prev" class="btn-secondary" type="button" title="Предыдущий месяц">‹</button>
         <h3 id="cal-title">Месяц</h3>
         <button id="cal-next" class="btn-secondary" type="button" title="Следующий месяц">›</button>
@@ -316,11 +401,11 @@
 
   <div id="toast-container"></div>
 
-  <!-- Input для камеры (iOS откроет камеру) -->
+  <!-- Input для камеры -->
   <input type="file" id="photo-input-camera" accept="image/*" capture="environment"
          style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
 
-  <!-- Input для галереи (iOS откроет галерею) -->
+  <!-- Input для галереи -->
   <input type="file" id="photo-input-gallery" accept="image/*"
          style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
 
@@ -329,7 +414,6 @@
     <div class="modal-card">
       <button id="photo-modal-close" class="modal-close">✕</button>
 
-      <!-- Режим загрузки -->
       <div id="photo-upload-view">
         <h3>📸 Новое фото</h3>
         <div id="photo-preview-wrap" class="photo-preview-wrap">
@@ -347,7 +431,6 @@
         <button id="photo-save" type="button">Сохранить</button>
       </div>
 
-      <!-- Режим просмотра (одно фото крупно) -->
       <div id="photo-view-view" style="display:none;">
         <img id="photo-view-img" alt="Фото прогресса" class="photo-view-img">
         <div class="photo-view-meta">
@@ -360,11 +443,10 @@
           <button id="photo-delete" class="btn-secondary danger" type="button">🗑 Удалить</button>
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- Модалка просмотра на весь экран (fullscreen слайдер) -->
+  <!-- Слайдер фото -->
   <div id="photo-slider" class="slider-overlay" style="display:none;">
     <button id="slider-close" class="slider-close">✕</button>
     <button id="slider-prev" class="slider-nav slider-prev">‹</button>
@@ -387,7 +469,8 @@
 
     <div id="slider-thumbs" class="slider-thumbs"></div>
   </div>
-  <!-- Модалка деталей дня календаря -->
+
+  <!-- Модалка деталей дня -->
   <div id="day-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card" style="max-width:520px;">
       <button id="day-modal-close" class="modal-close">✕</button>
@@ -457,6 +540,21 @@
 
         <button type="submit">Сохранить</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Модалка шаринга достижения -->
+  <div id="share-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:520px;">
+      <button id="share-modal-close" class="modal-close">✕</button>
+      <h3>🏆 Поделиться достижением</h3>
+      <div class="share-preview-wrap">
+        <canvas id="share-canvas" width="1080" height="1080"></canvas>
+      </div>
+      <div class="share-actions">
+        <button id="share-download" class="btn-secondary" type="button">⬇️ Скачать PNG</button>
+        <button id="share-native" class="btn-primary" type="button">📤 Поделиться</button>
+      </div>
     </div>
   </div>
 

@@ -2206,3 +2206,228 @@ input[type="number"] {
   color: var(--accent);
   line-height: 1.4;
 }
+
+/* ============================================================
+   ===== ЛЕНДИНГ ==============================================
+   ============================================================ */
+
+.landing {
+  padding: 24px 16px 60px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.landing-hero {
+  text-align: center;
+  padding: 40px 0 32px;
+}
+
+.landing-logo {
+  font-size: 72px;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.landing-title {
+  font-size: 42px;
+  margin: 0 0 6px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.landing-tagline {
+  font-size: 20px;
+  color: var(--accent);
+  margin: 0 0 20px;
+  font-weight: 600;
+}
+
+.landing-subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+.landing-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.landing-btn {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.landing-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 40px 0;
+}
+
+.landing-feature {
+  padding: 20px;
+  background: var(--card);
+  border-radius: 18px;
+  text-align: center;
+}
+
+.landing-feature-icon {
+  font-size: 42px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+.landing-feature h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.landing-feature p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.landing-how {
+  margin: 40px 0;
+}
+
+.landing-how h2 {
+  text-align: center;
+  font-size: 26px;
+  margin: 0 0 24px;
+}
+
+.landing-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.landing-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px;
+  background: var(--card);
+  border-radius: 14px;
+}
+
+.landing-step-num {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.landing-step-body h4 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.landing-step-body p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.landing-final {
+  text-align: center;
+  padding: 32px 16px;
+  background: var(--card);
+  border-radius: 18px;
+  margin: 40px 0 24px;
+}
+
+.landing-final h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+
+.landing-final p {
+  margin: 0 0 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.landing-final .landing-btn {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.landing-footer {
+  text-align: center;
+  padding: 24px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  border-top: 1px solid var(--card);
+  margin-top: 24px;
+}
+
+.landing-footer-sub {
+  margin-top: 6px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   ===== ШАРИНГ ДОСТИЖЕНИЙ ====================================
+   ============================================================ */
+
+.achievement-share {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+.achievement-share:hover {
+  opacity: 0.85;
+}
+.achievement-share:active {
+  transform: scale(0.97);
+}
+
+.share-preview-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+#share-canvas {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.share-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.share-actions button {
+  flex: 1;
+}

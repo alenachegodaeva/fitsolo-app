@@ -266,14 +266,30 @@ async function loadProfileName() {
   }
 }
 
+//// ===== ЛЕНДИНГ =====
+function showLanding() {
+  showScreen("landing");
+}
+
+function bindLanding() {
+  const goAuth = () => {
+    showScreen("auth");
+  };
+  ["landing-start", "landing-start-2", "landing-login"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", goAuth);
+  });
+}
+
 // ===== СТАРТ =====
 if (token) {
   apiFetch(`/api/me`)
-    .then(res => res.ok ? showMain() : logout())
-    .catch(() => logout());
+    .then(res => res.ok ? showMain() : showLanding())
+    .catch(() => showLanding());
 } else {
-  showScreen("auth");
+  showLanding();
 }
+bindLanding();
 loadExerciseBase();
 
 // ===== ТАБЫ =====
@@ -688,6 +704,166 @@ function setupExerciseAutocomplete() {
     }
   });
 }
+// ===== ШАРИНГ ДОСТИЖЕНИЙ =====
+const shareModal = document.getElementById("share-modal");
+const shareCanvas = document.getElementById("share-canvas");
+const shareModalClose = document.getElementById("share-modal-close");
+const shareDownload = document.getElementById("share-download");
+const shareNative = document.getElementById("share-native");
+
+let currentShareBlob = null;
+
+if (shareModalClose) {
+  shareModalClose.addEventListener("click", () => {
+    shareModal.style.display = "none";
+  });
+}
+
+function openShareModal(ach, achievementsData) {
+  if (!shareModal || !shareCanvas) return;
+
+  const name = document.getElementById("profile-name").textContent.replace("👤 ", "").trim() || "Пользователь";
+  const date = new Date().toLocaleDateString("ru-RU", {
+    day: "numeric", month: "long", year: "numeric"
+  });
+  const streak = achievementsData.streak || 0;
+  const totalWorkouts = achievementsData.total_workouts || 0;
+
+  drawShareCard({
+    icon: ach.icon,
+    title: ach.title,
+    name,
+    date,
+    streak,
+    totalWorkouts,
+  });
+
+  shareModal.style.display = "flex";
+
+  shareCanvas.toBlob((blob) => {
+    currentShareBlob = blob;
+  }, "image/png");
+}
+
+function drawShareCard({ icon, title, name, date, streak, totalWorkouts }) {
+  const ctx = shareCanvas.getContext("2d");
+  const W = 1080, H = 1080;
+
+  // Фон
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, "#14161a");
+  grad.addColorStop(1, "#1c1f26");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Декоративные акценты (мягкие круги)
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = "#7fb89a";
+  ctx.beginPath();
+  ctx.arc(150, 200, 300, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(950, 900, 350, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Иконка (эмодзи)
+  ctx.font = "180px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(icon, W / 2, 340);
+
+  // Название достижения
+  ctx.fillStyle = "#e8eaed";
+  ctx.font = "bold 68px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText(title, W / 2, 540);
+
+  // Имя
+  ctx.fillStyle = "#7fb89a";
+  ctx.font = "500 48px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText(name, W / 2, 640);
+
+  // Дата
+  ctx.fillStyle = "#8b929e";
+  ctx.font = "400 32px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText(date, W / 2, 700);
+
+  // Доп. инфо (streak + всего тренировок)
+  const extras = [];
+  if (streak > 0) extras.push(`🔥 ${streak} дней подряд`);
+  if (totalWorkouts > 0) extras.push(`💪 всего ${totalWorkouts} тренировок`);
+
+  if (extras.length) {
+    ctx.fillStyle = "#8b929e";
+    ctx.font = "400 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillText(extras.join("   ·   "), W / 2, 760);
+  }
+
+  // Разделитель
+  ctx.strokeStyle = "#2a2e37";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(140, 850);
+  ctx.lineTo(W - 140, 850);
+  ctx.stroke();
+
+  // Бренд
+  ctx.fillStyle = "#e8eaed";
+  ctx.font = "bold 44px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText("🏋️ FitSolo", W / 2, 930);
+
+  ctx.fillStyle = "#8b929e";
+  ctx.font = "400 26px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText("Твой ИИ-тренер", W / 2, 975);
+
+  ctx.fillStyle = "#7fb89a";
+  ctx.font = "400 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText("alenachegodaeva.github.io/fitsolo-app", W / 2, 1015);
+}
+
+if (shareDownload) {
+  shareDownload.addEventListener("click", () => {
+    if (!currentShareBlob) return;
+    const url = URL.createObjectURL(currentShareBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fitsolo-achievement-${Date.now()}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Картинка скачана ✓", "success");
+  });
+}
+
+if (shareNative) {
+  shareNative.addEventListener("click", async () => {
+    if (!currentShareBlob) return;
+    const file = new File([currentShareBlob], "fitsolo-achievement.png", { type: "image/png" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "Моё достижение в FitSolo",
+          text: "Смотри, чего я добился в FitSolo 💪",
+        });
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.warn("Share failed:", err);
+          showToast("Не удалось поделиться", "error");
+        }
+      }
+    } else {
+      // Фолбэк — скачиваем
+      const url = URL.createObjectURL(currentShareBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fitsolo-achievement-${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Скачано — поделись вручную", "success");
+    }
+  });
+}
 // ===== ГРУППЫ МЫШЦ =====
 let musclesCache = null;
 let musclesDays = 30;
@@ -999,17 +1175,7 @@ function renderAchievements(data) {
   const percent = Math.round((data.earned_count / data.achievements.length) * 100);
 
   container.innerHTML = `
-    <div class="achievements-header">
-      <div>
-        <h3>🏆 Достижения</h3>
-        <div class="achievements-sub">${data.earned_count} из ${data.achievements.length} открыто</div>
-      </div>
-      <div class="achievements-count">${percent}%</div>
-    </div>
-    <div class="achievements-bar-wrap">
-      <div class="achievements-bar-fill" style="width: ${percent}%"></div>
-    </div>
-    <div class="achievements-grid">
+        <div class="achievements-grid">
       ${data.achievements.map(a => {
         const pct = Math.min(100, Math.round((a.progress / a.target) * 100));
         return `
@@ -1017,7 +1183,8 @@ function renderAchievements(data) {
             <div class="achievement-icon">${a.icon}</div>
             <div class="achievement-title">${a.title}</div>
             ${a.done
-              ? `<div class="achievement-done-label">✓ Получено</div>`
+              ? `<div class="achievement-done-label">✓ Получено</div>
+                 <button class="achievement-share" type="button" data-ach-id="${a.id}">📤 Поделиться</button>`
               : `<div class="achievement-progress">
                    <div class="achievement-bar"><div class="achievement-bar-fill" style="width:${pct}%"></div></div>
                    <div class="achievement-progress-text">${a.progress} / ${a.target}</div>
@@ -1029,7 +1196,14 @@ function renderAchievements(data) {
     </div>
   `;
 }
-
+  // Кнопки "Поделиться" у достижений
+  container.querySelectorAll(".achievement-share").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const achId = btn.dataset.achId;
+      const ach = data.achievements.find(x => x.id === achId);
+      if (ach) openShareModal(ach, data);
+    });
+  });
 // ===== ПИТАНИЕ =====
 async function loadNutrition() {
   if (!userId) return;
