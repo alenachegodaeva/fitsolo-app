@@ -976,3 +976,90 @@ form button[type="submit"] {
   margin-bottom: 8px;
   padding-left: 4px;
 }
+/* ===== TOAST-УВЕДОМЛЕНИЯ ===== */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 12px 22px;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  max-width: 90vw;
+  animation: toastIn 0.35s var(--transition);
+  pointer-events: auto;
+}
+
+.toast.success {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toast.error {
+  border-color: #e07a6b;
+  color: #e07a6b;
+}
+
+.toast.fade-out {
+  animation: toastOut 0.3s var(--transition) forwards;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(20px); }
+}
+
+/* ===== ДЕЙСТВИЯ В ИСТОРИИ ===== */
+.log-item .log-actions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.log-repeat {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px 8px;
+  transition: color 0.2s, transform 0.15s;
+}
+
+.log-repeat:hover {
+  color: var(--accent);
+  background: transparent;
+  box-shadow: none;
+  transform: scale(1.1);
+}
+
+/* ===== АНИМАЦИЯ НОВОЙ ЗАПИСИ ===== */
+.log-item.just-added {
+  animation: logPulse 1.2s var(--transition);
+}
+
+@keyframes logPulse {
+  0%   { background: var(--accent-soft); transform: scale(1.02); }
+  100% { background: var(--bg-card); transform: scale(1); }
+}

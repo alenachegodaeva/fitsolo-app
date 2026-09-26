@@ -4,6 +4,20 @@ let chatHistory = [];
 let statsCharts = [];
 let currentPlan = null;
 
+// ===== TOAST-УВЕДОМЛЕНИЯ =====
+function showToast(message, type = "success") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add("fade-out");
+    setTimeout(() => toast.remove(), 300);
+  }, 2200);
+}
+
 // ===== PWA: Установка на телефон =====
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -89,7 +103,7 @@ document.getElementById("profile-form").addEventListener("submit", async (e) => 
     localStorage.setItem("userId", userId);
     showMain();
   } catch (err) {
-    alert("Ошибка соединения с сервером. Проверь, что бэкенд запущен.");
+    showToast("Ошибка соединения с сервером", "error");
   }
 });
 
@@ -178,6 +192,7 @@ function formatSplit(split) {
 document.getElementById("regen-btn").addEventListener("click", () => {
   if (confirm("Пересоздать программу? Текущая будет заменена.")) {
     loadPlan();
+    showToast("Программа обновлена", "success");
   }
 });
 
@@ -244,8 +259,9 @@ async function clearChatHistory() {
     document.getElementById("chat-messages").innerHTML = "";
     chatHistory = [];
     addMsg("История очищена. Задай новый вопрос! 💪", "ai");
+    showToast("История чата очищена", "success");
   } catch (err) {
-    alert("Не удалось очистить историю");
+    showToast("Не удалось очистить историю", "error");
   }
 }
 
@@ -298,30 +314,44 @@ async function sendChat() {
   } catch (err) {
     loading.remove();
     addMsg("⚠️ Ошибка соединения с сервером", "ai");
+    showToast("Сервер не отвечает", "error");
   }
 }
 
-// ===== ДНЕВНИК =====
+// ===== ДНЕВНИК: обработка формы =====
 document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
-  await fetch(`${API}/api/log`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user_id: +userId,
-      exercise: f.exercise.value,
-      weight: +f.weight.value,
-      reps: +f.reps.value,
-      sets: +f.sets.value,
-    }),
-  });
-  f.reset();
-  document.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
-  loadLogs();
+  const payload = {
+    user_id: +userId,
+    exercise: f.exercise.value,
+    weight: +f.weight.value,
+    reps: +f.reps.value,
+    sets: +f.sets.value,
+  };
+  try {
+    const res = await fetch(`${API}/api/log`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("server error");
+    f.reset();
+    document.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
+    await loadLogs();
+    // Подсветка свежей записи
+    const firstItem = document.querySelector(".log-item");
+    if (firstItem) {
+      firstItem.classList.add("just-added");
+      setTimeout(() => firstItem.classList.remove("just-added"), 1200);
+    }
+    showToast("Запись добавлена ✓", "success");
+  } catch (err) {
+    showToast("Не удалось сохранить запись", "error");
+  }
 });
 
-// ===== ДНЕВНИК =====
+// ===== ДНЕВНИК: загрузка истории =====
 let logPeriod = 7; // дней: 7 / 30 / 0 (всё)
 
 async function loadLogs() {
@@ -351,7 +381,7 @@ async function loadLogs() {
   const groups = {};
   logs.forEach(l => {
     const d = new Date(l.date);
-    const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    const key = d.toISOString().slice(0, 10);
     if (!groups[key]) groups[key] = [];
     groups[key].push(l);
   });
@@ -378,18 +408,46 @@ async function loadLogs() {
           <div>
             <strong>${l.exercise}</strong> — ${l.weight}кг × ${l.reps} × ${l.sets}
           </div>
-          <button class="log-delete" data-id="${l.id}" title="Удалить">✕</button>
+          <div class="log-actions">
+            <button class="log-repeat" title="Повторить"
+              data-exercise="${l.exercise}"
+              data-weight="${l.weight}"
+              data-reps="${l.reps}"
+              data-sets="${l.sets}">↻</button>
+            <button class="log-delete" data-id="${l.id}" title="Удалить">✕</button>
+          </div>
         </div>
       `).join("")}
     </div>
   `).join("");
 
+  // Удаление записи
   document.querySelectorAll(".log-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (confirm("Удалить запись?")) {
-        await fetch(`${API}/api/log/${btn.dataset.id}`, { method: "DELETE" });
-        loadLogs();
+        try {
+          await fetch(`${API}/api/log/${btn.dataset.id}`, { method: "DELETE" });
+          await loadLogs();
+          showToast("Запись удалена", "success");
+        } catch (err) {
+          showToast("Не удалось удалить", "error");
+        }
       }
+    });
+  });
+
+  // Повторить запись — заполнить форму
+  document.querySelectorAll(".log-repeat").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const f = document.getElementById("log-form");
+      f.exercise.value = btn.dataset.exercise;
+      f.weight.value   = btn.dataset.weight;
+      f.reps.value     = btn.dataset.reps;
+      f.sets.value     = btn.dataset.sets;
+      // Скролл к форме + фокус на вес
+      document.getElementById("log-form").scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => f.weight.focus(), 300);
+      showToast("Заполнено — измени вес и сохрани", "success");
     });
   });
 }
@@ -403,7 +461,6 @@ document.querySelectorAll("#log-period-switch .btn-secondary").forEach(btn => {
     loadLogs();
   });
 });
-
 
 // ===== КНОПКИ УПРАЖНЕНИЙ В ДНЕВНИКЕ =====
 function buildExercisePicker() {
@@ -638,6 +695,7 @@ async function loadMeals() {
         if (confirm("Удалить запись?")) {
           await fetch(`${API}/api/meal/${btn.dataset.id}`, { method: "DELETE" });
           loadMeals();
+          showToast("Приём пищи удалён", "success");
         }
       });
     });
@@ -727,21 +785,26 @@ function recalcMacros() {
 document.getElementById("meal-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
-  await fetch(`${API}/api/meal`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user_id: +userId,
-      name: f.name.value,
-      grams: +f.grams.value,
-      calories: +f.calories.value,
-      protein: +f.protein.value,
-      fat: +f.fat.value,
-      carbs: +f.carbs.value,
-    }),
-  });
-  f.reset();
-  loadMeals();
+  try {
+    await fetch(`${API}/api/meal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: +userId,
+        name: f.name.value,
+        grams: +f.grams.value,
+        calories: +f.calories.value,
+        protein: +f.protein.value,
+        fat: +f.fat.value,
+        carbs: +f.carbs.value,
+      }),
+    });
+    f.reset();
+    loadMeals();
+    showToast("Приём пищи добавлен ✓", "success");
+  } catch (err) {
+    showToast("Не удалось добавить", "error");
+  }
 });
 
 // ===== КНОПКА "ИЗМЕНИТЬ ПРОФИЛЬ" =====
