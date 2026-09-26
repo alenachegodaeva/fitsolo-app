@@ -321,18 +321,68 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   loadLogs();
 });
 
+// ===== ДНЕВНИК =====
+let logPeriod = 7; // дней: 7 / 30 / 0 (всё)
+
 async function loadLogs() {
   const res = await fetch(`${API}/api/logs/${userId}`);
-  const logs = await res.json();
-  document.getElementById("logs-list").innerHTML = logs.map(l => `
-    <div class="log-item">
-      <div>
-        <strong>${l.exercise}</strong> — ${l.weight}кг × ${l.reps} × ${l.sets}
-        <small>${new Date(l.date).toLocaleDateString("ru-RU")}</small>
-      </div>
-      <button class="log-delete" data-id="${l.id}" title="Удалить">✕</button>
+  const allLogs = await res.json();
+
+  // Фильтр по периоду
+  let logs = allLogs;
+  if (logPeriod > 0) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - logPeriod);
+    cutoff.setHours(0, 0, 0, 0);
+    logs = allLogs.filter(l => new Date(l.date) >= cutoff);
+  }
+
+  // Сортировка: свежие сверху
+  logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const el = document.getElementById("logs-list");
+
+  if (!logs.length) {
+    el.innerHTML = "<p class='hint'>Пока нет записей за этот период</p>";
+    return;
+  }
+
+  // Группировка по дате
+  const groups = {};
+  logs.forEach(l => {
+    const d = new Date(l.date);
+    const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(l);
+  });
+
+  // Форматирование заголовка даты
+  const formatDate = (isoKey) => {
+    const d = new Date(isoKey + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (d.getTime() === today.getTime()) return "Сегодня";
+    if (d.getTime() === yesterday.getTime()) return "Вчера";
+
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  };
+
+  el.innerHTML = Object.keys(groups).map(dateKey => `
+    <div class="log-day-group">
+      <div class="log-day-title">${formatDate(dateKey)}</div>
+      ${groups[dateKey].map(l => `
+        <div class="log-item">
+          <div>
+            <strong>${l.exercise}</strong> — ${l.weight}кг × ${l.reps} × ${l.sets}
+          </div>
+          <button class="log-delete" data-id="${l.id}" title="Удалить">✕</button>
+        </div>
+      `).join("")}
     </div>
-  `).join("") || "<p class='hint'>Пока нет записей</p>";
+  `).join("");
 
   document.querySelectorAll(".log-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -343,6 +393,17 @@ async function loadLogs() {
     });
   });
 }
+
+// Обработчик переключателя периода
+document.querySelectorAll("#log-period-switch .btn-secondary").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#log-period-switch .btn-secondary").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    logPeriod = +btn.dataset.period;
+    loadLogs();
+  });
+});
+
 
 // ===== КНОПКИ УПРАЖНЕНИЙ В ДНЕВНИКЕ =====
 function buildExercisePicker() {
