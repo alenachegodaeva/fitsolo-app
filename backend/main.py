@@ -160,6 +160,31 @@ def get_profile(user_id: int, authorization: Optional[str] = Header(None)):
     return _get_profile_data(user_id)
 
 
+@app.put("/api/profile/{user_id}")
+def update_profile(user_id: int, p: ProfileIn, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
+    db = SessionLocal()
+    user = db.query(User).get(user_id)
+    if not user:
+        db.close()
+        raise HTTPException(404, "Пользователь не найден")
+
+    user.name = p.name
+    user.gender = p.gender
+    user.age = p.age
+    user.weight = p.weight
+    user.height = p.height
+    user.experience = p.experience
+    user.goal = p.goal
+    user.days_per_week = p.days_per_week
+    user.equipment = json.dumps(p.equipment)
+    user.injuries = json.dumps(p.injuries)
+
+    db.commit()
+    db.close()
+    return {"ok": True}
+
+
 @app.get("/api/plan/{user_id}")
 def get_plan(user_id: int, authorization: Optional[str] = Header(None)):
     check_own(authorization, user_id)
