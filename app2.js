@@ -1529,6 +1529,7 @@ let calendarState = {
   month: new Date().getMonth() + 1,
   initialized: false,
   cache: {},
+  achievementsByDay: null,
 };
 
 function initCalendar() {
@@ -1553,11 +1554,54 @@ function initCalendar() {
       renderCalendar();
     });
 
+    const todayBtn = document.getElementById("cal-today");
+    if (todayBtn) {
+      todayBtn.addEventListener("click", () => {
+        const now = new Date();
+        calendarState.year = now.getFullYear();
+        calendarState.month = now.getMonth() + 1;
+        renderCalendar();
+      });
+    }
+
     const dayClose = document.getElementById("day-modal-close");
     if (dayClose) {
       dayClose.addEventListener("click", () => {
         document.getElementById("day-modal").style.display = "none";
       });
+    }
+
+    const grid = document.getElementById("calendar-grid");
+    if (grid) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      grid.addEventListener("touchstart", (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      grid.addEventListener("touchend", (e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 0) {
+            calendarState.month -= 1;
+            if (calendarState.month < 1) {
+              calendarState.month = 12;
+              calendarState.year -= 1;
+            }
+          } else {
+            calendarState.month += 1;
+            if (calendarState.month > 12) {
+              calendarState.month = 1;
+              calendarState.year += 1;
+            }
+          }
+          renderCalendar();
+        }
+      }, { passive: true });
     }
   }
   renderCalendar();
@@ -1571,6 +1615,21 @@ async function renderCalendar() {
 
   const grid = document.getElementById("calendar-grid");
   grid.innerHTML = "<div class='hint' style='grid-column:1/-1;'>Загрузка…</div>";
+
+  // Один раз подгружаем даты достижений
+  if (calendarState.achievementsByDay === null) {
+    try {
+      const achRes = await apiFetch(`/api/achievements/dates/${userId}`);
+      if (achRes.ok) {
+        calendarState.achievementsByDay = await achRes.json();
+      } else {
+        calendarState.achievementsByDay = {};
+      }
+    } catch (err) {
+      console.warn("Не удалось загрузить даты достижений:", err);
+      calendarState.achievementsByDay = {};
+    }
+  }
 
   const cacheKey = `${year}-${String(month).padStart(2, "0")}`;
   let daysData = calendarState.cache[cacheKey];
@@ -1617,6 +1676,9 @@ async function renderCalendar() {
     const hasPhotos = info.photos > 0;
     const isToday = todayKey === day;
 
+    const dayAchievements = (calendarState.achievementsByDay || {})[key] || [];
+    const hasAchievement = dayAchievements.length > 0;
+
     const dots = [
       hasWorkouts ? '<span class="cal-dot workout"></span>' : "",
       hasMeals ? '<span class="cal-dot meal"></span>' : "",
@@ -1626,9 +1688,15 @@ async function renderCalendar() {
     const classes = ["cal-cell"];
     if (isToday) classes.push("today");
     if (hasWorkouts || hasMeals || hasPhotos) classes.push("has-activity");
+    if (hasAchievement) classes.push("has-achievement");
+
+    const star = hasAchievement
+      ? `<div class="cal-star" title="Достижение: ${dayAchievements.length}">⭐</div>`
+      : "";
 
     html += `
       <div class="${classes.join(" ")}" data-date="${key}">
+        ${star}
         <div class="cal-num">${day}</div>
         <div class="cal-dots">${dots}</div>
       </div>
