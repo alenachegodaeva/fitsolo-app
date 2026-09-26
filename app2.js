@@ -3,18 +3,7 @@ let userId = localStorage.getItem("userId");
 let chatHistory = [];
 let statsCharts = [];
 let currentPlan = null;
-let exerciseBase = []; // вся база упражнений с сервера
-
-async function loadExerciseBase() {
-  try {
-    const res = await fetch(`${API}/api/exercises`);
-    if (!res.ok) throw new Error('API error');
-    exerciseBase = await res.json();
-    console.log(`База упражнений загружена: ${exerciseBase.length}`);
-  } catch (err) {
-    console.warn('Не удалось загрузить базу упражнений:', err);
-  }
-}
+let exerciseBase = []; // все упражнения с сервера
 
 // ===== TOAST-УВЕДОМЛЕНИЯ =====
 function showToast(message, type = "success") {
@@ -54,6 +43,30 @@ function updateWeightPlaceholder(exerciseName) {
     input.placeholder = "Минуты";
   } else {
     input.placeholder = "Вес (кг)";
+  }
+}
+
+// Запрет минуса и научной нотации в числовых полях
+document.addEventListener("input", (e) => {
+  if (e.target.type === "number") {
+    if (e.target.value.startsWith("-")) {
+      e.target.value = e.target.value.slice(1);
+    }
+    if (e.target.name === "weight" && !e.target.value) {
+      updateWeightPlaceholder("");
+    }
+  }
+});
+
+// ===== БАЗА УПРАЖНЕНИЙ =====
+async function loadExerciseBase() {
+  try {
+    const res = await fetch(`${API}/api/exercises`);
+    if (!res.ok) throw new Error('API error');
+    exerciseBase = await res.json();
+    console.log(`База упражнений загружена: ${exerciseBase.length}`);
+  } catch (err) {
+    console.warn('Не удалось загрузить базу упражнений:', err);
   }
 }
 
@@ -362,6 +375,17 @@ async function sendChat() {
 document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
+
+  // Защита от отрицательных значений
+  if (+f.weight.value < 0) {
+    showToast("Вес не может быть отрицательным", "error");
+    return;
+  }
+  if (+f.reps.value < 1 || +f.sets.value < 1) {
+    showToast("Повторы и подходы — минимум 1", "error");
+    return;
+  }
+
   const payload = {
     user_id: +userId,
     exercise: f.exercise.value,
@@ -455,6 +479,7 @@ async function loadLogs() {
     </div>
   `).join("");
 
+  // Удаление
   document.querySelectorAll(".log-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (confirm("Удалить запись?")) {
@@ -469,6 +494,7 @@ async function loadLogs() {
     });
   });
 
+  // Повторить запись
   document.querySelectorAll(".log-repeat").forEach(btn => {
     btn.addEventListener("click", () => {
       const f = document.getElementById("log-form");
@@ -535,26 +561,25 @@ function setupExerciseAutocomplete() {
   const dropdown = document.getElementById("exercise-dropdown");
   if (!input || !dropdown) return;
 
-    input.addEventListener("input", () => {
+  input.addEventListener("input", () => {
     updateWeightPlaceholder(input.value);
     const q = input.value.trim().toLowerCase();
     dropdown.innerHTML = "";
     if (q.length < 1) return;
 
-    // Упражнения из программы
+    // Программа
     const planNames = currentPlan?.week?.flatMap(d => (d.exercises || []).map(e => e.name)) || [];
     const planSet = new Set(planNames);
 
-    // Упражнения из базы (с сервера)
+    // База с сервера
     const baseNames = exerciseBase.map(e => e.name).filter(Boolean);
 
-    // Объединяем: программа (с бейджем) + база, без дублей
+    // Объединяем без дублей
     const combined = [
       ...planNames.map(name => ({ name, fromPlan: true })),
       ...baseNames.filter(n => !planSet.has(n)).map(name => ({ name, fromPlan: false })),
     ];
 
-    // Ищем по подстроке, убираем дубли
     const seen = new Set();
     const matches = combined
       .filter(item => {
@@ -836,6 +861,20 @@ function recalcMacros() {
 document.getElementById("meal-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
+
+  // Защита от отрицательных значений
+  const numFields = ["grams", "calories", "protein", "fat", "carbs"];
+  for (const name of numFields) {
+    if (+f[name].value < 0) {
+      showToast("Значения не могут быть отрицательными", "error");
+      return;
+    }
+  }
+  if (+f.grams.value < 1) {
+    showToast("Граммы — минимум 1", "error");
+    return;
+  }
+
   try {
     await fetch(`${API}/api/meal`, {
       method: "POST",
