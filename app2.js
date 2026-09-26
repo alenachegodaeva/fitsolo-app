@@ -3,6 +3,18 @@ let userId = localStorage.getItem("userId");
 let chatHistory = [];
 let statsCharts = [];
 let currentPlan = null;
+let exerciseBase = []; // вся база упражнений с сервера
+
+async function loadExerciseBase() {
+  try {
+    const res = await fetch(`${API}/api/exercises`);
+    if (!res.ok) throw new Error('API error');
+    exerciseBase = await res.json();
+    console.log(`База упражнений загружена: ${exerciseBase.length}`);
+  } catch (err) {
+    console.warn('Не удалось загрузить базу упражнений:', err);
+  }
+}
 
 // ===== TOAST-УВЕДОМЛЕНИЯ =====
 function showToast(message, type = "success") {
@@ -156,6 +168,7 @@ async function loadProfileName() {
 }
 
 if (userId) showMain();
+loadExerciseBase();
 
 // ===== ТАБЫ =====
 document.querySelectorAll(".tab").forEach(t => {
@@ -522,29 +535,46 @@ function setupExerciseAutocomplete() {
   const dropdown = document.getElementById("exercise-dropdown");
   if (!input || !dropdown) return;
 
-  input.addEventListener("input", () => {
+    input.addEventListener("input", () => {
     updateWeightPlaceholder(input.value);
     const q = input.value.trim().toLowerCase();
     dropdown.innerHTML = "";
     if (q.length < 1) return;
 
+    // Упражнения из программы
     const planNames = currentPlan?.week?.flatMap(d => (d.exercises || []).map(e => e.name)) || [];
-    const all = [...new Set(planNames)];
+    const planSet = new Set(planNames);
 
-    const matches = all
-      .filter(name => name.toLowerCase().includes(q))
-      .slice(0, 8);
+    // Упражнения из базы (с сервера)
+    const baseNames = exerciseBase.map(e => e.name).filter(Boolean);
+
+    // Объединяем: программа (с бейджем) + база, без дублей
+    const combined = [
+      ...planNames.map(name => ({ name, fromPlan: true })),
+      ...baseNames.filter(n => !planSet.has(n)).map(name => ({ name, fromPlan: false })),
+    ];
+
+    // Ищем по подстроке, убираем дубли
+    const seen = new Set();
+    const matches = combined
+      .filter(item => {
+        if (!item.name.toLowerCase().includes(q)) return false;
+        if (seen.has(item.name)) return false;
+        seen.add(item.name);
+        return true;
+      })
+      .slice(0, 10);
 
     if (!matches.length) return;
 
-    matches.forEach(name => {
+    matches.forEach(item => {
       const el = document.createElement("div");
       el.className = "exercise-option";
-      el.textContent = name;
+      el.innerHTML = `${item.name}${item.fromPlan ? '<span class="ex-source">• из программы</span>' : ''}`;
       el.addEventListener("click", () => {
-        input.value = name;
+        input.value = item.name;
         dropdown.innerHTML = "";
-        updateWeightPlaceholder(name);
+        updateWeightPlaceholder(item.name);
         document.querySelector('#log-form input[name="weight"]').focus();
       });
       dropdown.appendChild(el);

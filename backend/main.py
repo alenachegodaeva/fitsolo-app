@@ -340,6 +340,22 @@ def search_foods(q: str = ""):
     return foods[:30]
 
 
+
+# ===== БАЗА УПРАЖНЕНИЙ =====
+
+@app.get("/api/exercises")
+def get_exercises(q: str = "", limit: int = 200):
+    """Поиск упражнений по названию. Если q пустой — вернуть первые N."""
+    from pathlib import Path
+
+    path = Path(__file__).parent / "exercises.json"
+    exercises = json.loads(path.read_text(encoding="utf-8"))
+
+    if q:
+        q_lower = q.lower()
+        exercises = [e for e in exercises if q_lower in e["name"].lower()]
+
+    return exercises[:limit]
    
 
 @app.get("/api/meals/history/{user_id}")
