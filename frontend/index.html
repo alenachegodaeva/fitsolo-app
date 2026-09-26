@@ -97,7 +97,7 @@
     </form>
   </section>
 
-  <!-- ===== ОНБОРДИНГ (старый, на случай если понадобится) ===== -->
+  <!-- ===== ОНБОРДИНГ (не используется, на всякий случай) ===== -->
   <section id="onboarding" class="screen">
     <h2>Расскажи о себе</h2>
     <form id="profile-form">
@@ -112,46 +112,17 @@
         <input name="weight" type="number" min="20" step="0.1" placeholder="Вес (кг)" required>
         <input name="height" type="number" min="100" placeholder="Рост (см)" required>
       </div>
-      <select name="experience" required>
-        <option value="">Опыт тренировок</option>
-        <option value="beginner">Новичок (&lt; 6 мес)</option>
-        <option value="intermediate">Средний (6 мес – 2 года)</option>
-        <option value="advanced">Продвинутый (&gt; 2 лет)</option>
-      </select>
-      <select name="goal" required>
-        <option value="">Цель</option>
-        <option value="weight_loss">Похудение</option>
-        <option value="muscle_gain">Набор массы</option>
-        <option value="strength">Сила</option>
-        <option value="endurance">Выносливость</option>
-      </select>
-      <input name="days_per_week" type="number" min="2" max="6" placeholder="Тренировок в неделю" required>
-      <fieldset>
-        <legend>Доступное оборудование</legend>
-        <div class="checkbox-grid">
-          <label><input type="checkbox" value="barbell" checked> Штанга</label>
-          <label><input type="checkbox" value="kettlebell"> Гиря</label>
-          <label><input type="checkbox" value="dumbbells" checked> Гантели</label>
-          <label><input type="checkbox" value="machines" checked> Тренажёры</label>
-          <label><input type="checkbox" value="bench"> Скамья</label>
-          <label><input type="checkbox" value="bodyweight" checked> Свой вес</label>
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>Травмы / ограничения</legend>
-        <div class="checkbox-grid">
-          <label><input type="checkbox" value="lower_back"> Поясница</label>
-          <label><input type="checkbox" value="knees"> Колени</label>
-          <label><input type="checkbox" value="shoulder"> Плечи</label>
-        </div>
-      </fieldset>
-      <button type="submit">Создать программу 🚀</button>
+      <button type="submit">Создать</button>
     </form>
   </section>
 
+  <!-- ===== ОСНОВНОЙ ЭКРАН ===== -->
   <section id="main" class="screen">
     <div class="profile-bar">
-      <span id="profile-name">👤 Загрузка...</span>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span id="profile-name">👤 Загрузка...</span>
+        <span id="streak-badge" class="streak-badge" style="display:none;">🔥 0</span>
+      </div>
       <div style="display:flex; gap:6px;">
         <button id="edit-profile" class="btn-secondary" title="Изменить профиль">⚙️</button>
         <button id="logout-btn" class="btn-secondary" title="Выйти">🚪</button>
@@ -166,6 +137,7 @@
       <button data-tab="nutrition" class="tab">🍎 Питание</button>
     </div>
 
+    <!-- ПЛАН -->
     <div id="tab-plan" class="tab-content active">
       <div class="actions">
         <button id="export-btn" class="btn-secondary">📄 Скачать программу (PDF)</button>
@@ -174,6 +146,7 @@
       <div id="plan-content"></div>
     </div>
 
+    <!-- ТРЕНЕР -->
     <div id="tab-chat" class="tab-content">
       <div class="chat-header" style="display:flex; justify-content:flex-end; margin-bottom:8px;">
         <button id="clear-chat" class="btn-secondary" style="font-size:13px; padding:6px 12px;">🗑 Очистить историю</button>
@@ -192,6 +165,7 @@
       </div>
     </div>
 
+    <!-- ДНЕВНИК -->
     <div id="tab-log" class="tab-content">
       <h3>Добавить запись</h3>
       <div id="exercise-picker" class="exercise-picker"></div>
@@ -216,12 +190,15 @@
       <div id="logs-list"></div>
     </div>
 
+    <!-- ПРОГРЕСС -->
     <div id="tab-stats" class="tab-content">
-      <div id="stats-content">
+      <div id="achievements-block"></div>
+      <div id="stats-content" style="margin-top:24px;">
         <p class="hint">Добавь записи в дневник, чтобы увидеть статистику 📈</p>
       </div>
     </div>
 
+    <!-- ПИТАНИЕ -->
     <div id="tab-nutrition" class="tab-content">
       <h2>🍎 Норма КБЖУ</h2>
       <div id="nutrition-norm"></div>
