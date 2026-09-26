@@ -1063,3 +1063,36 @@ form button[type="submit"] {
   0%   { background: var(--accent-soft); transform: scale(1.02); }
   100% { background: var(--bg-card); transform: scale(1); }
 }
+/* ===== УБИРАЕМ СТРЕЛОЧКИ (spinner) У NUMBER ===== */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+/* ===== ЭКРАН АВТОРИЗАЦИИ ===== */
+#auth h2 {
+  text-align: center;
+}
+#auth > p {
+  text-align: center;
+  font-size: 14px;
+}
+#auth .tabs {
+  grid-template-columns: 1fr 1fr;
+}
+#auth form button[type="submit"] {
+  margin-top: 4px;
+}
+
+/* ===== КНОПКИ В ПРОФИЛЬ-БАРЕ ===== */
+#logout-btn,
+#edit-profile {
+  padding: 7px 12px;
+  font-size: 16px;
+  min-width: 42px;
+}

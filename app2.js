@@ -1,11 +1,29 @@
 const API = "https://103.76.53.84.nip.io";
-let userId = localStorage.getItem("userId");
+
+// ===== ХРАНИЛИЩЕ =====
+let token = localStorage.getItem("token");
+let userId = localStorage.getItem("userId"); // для миграции со старой версии
 let chatHistory = [];
 let statsCharts = [];
 let currentPlan = null;
-let exerciseBase = []; // все упражнения с сервера
+let exerciseBase = [];
 
-// ===== TOAST-УВЕДОМЛЕНИЯ =====
+// ===== УТИЛИТА: fetch с токеном =====
+async function apiFetch(path, options = {}) {
+  const opts = { ...options, headers: { ...(options.headers || {}) } };
+  if (token) {
+    opts.headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API}${path}`, opts);
+  if (res.status === 401) {
+    // Токен истёк — на экран логина
+    logout();
+    throw new Error("unauthorized");
+  }
+  return res;
+}
+
+// ===== TOAST =====
 function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
   if (!container) return;
@@ -20,14 +38,12 @@ function showToast(message, type = "success") {
 }
 
 // ===== УТИЛИТЫ =====
-// Кардио/заминка/растяжка — единицы в минутах, не в кг
-function isCardio(exerciseName) {
-  if (!exerciseName) return false;
-  const n = exerciseName.toLowerCase();
+function isCardio(name) {
+  if (!name) return false;
+  const n = name.toLowerCase();
   return n.startsWith("кардио") || n.startsWith("заминка") || n.includes("растяжка");
 }
 
-// Красивое представление записи в дневнике
 function formatLogEntry(l) {
   if (isCardio(l.exercise)) {
     return `<strong>${l.exercise}</strong> — ${l.weight} мин`;
@@ -35,26 +51,16 @@ function formatLogEntry(l) {
   return `<strong>${l.exercise}</strong> — ${l.weight}кг × ${l.reps} × ${l.sets}`;
 }
 
-// Динамический placeholder в поле «Вес»
 function updateWeightPlaceholder(exerciseName) {
   const input = document.querySelector('#log-form input[name="weight"]');
   if (!input) return;
-  if (exerciseName && isCardio(exerciseName)) {
-    input.placeholder = "Минуты";
-  } else {
-    input.placeholder = "Вес (кг)";
-  }
+  input.placeholder = (exerciseName && isCardio(exerciseName)) ? "Минуты" : "Вес (кг)";
 }
 
-// Запрет минуса и научной нотации в числовых полях
+// Запрет минуса в number-полях
 document.addEventListener("input", (e) => {
-  if (e.target.type === "number") {
-    if (e.target.value.startsWith("-")) {
-      e.target.value = e.target.value.slice(1);
-    }
-    if (e.target.name === "weight" && !e.target.value) {
-      updateWeightPlaceholder("");
-    }
+  if (e.target.type === "number" && e.target.value.startsWith("-")) {
+    e.target.value = e.target.value.slice(1);
   }
 });
 
@@ -62,52 +68,171 @@ document.addEventListener("input", (e) => {
 async function loadExerciseBase() {
   try {
     const res = await fetch(`${API}/api/exercises`);
-    if (!res.ok) throw new Error('API error');
     exerciseBase = await res.json();
-    console.log(`База упражнений загружена: ${exerciseBase.length}`);
   } catch (err) {
-    console.warn('Не удалось загрузить базу упражнений:', err);
+    console.warn("Не удалось загрузить базу упражнений:", err);
   }
 }
 
-// ===== PWA: Установка на телефон =====
+// ===== АВТОРИЗАЦИЯ =====
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  token = null;
+  showScreen("auth");
+}
+
+// Переключение табов Вход / Регистрация
+document.getElementById("auth-tab-login").addEventListener("click", () => {
+  document.getElementById("auth-tab-login").classList.add("active");
+  document.getElementById("auth-tab-register").classList.remove("active");
+  document.getElementById("login-form").style.display = "block";
+  document.getElementById("register-form").style.display = "none";
+});
+
+document.getElementById("auth-tab-register").addEventListener("click", () => {
+  document.getElementById("auth-tab-register").classList.add("active");
+  document.getElementById("auth-tab-login").classList.remove("active");
+  document.getElementById("register-form").style.display = "block";
+  document.getElementById("login-form").style.display = "none";
+});
+
+// === ФОРМА ВХОДА ===
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  try {
+    const res = await fetch(`${API}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: f.email.value.trim(),
+        password: f.password.value,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Неверный email или пароль");
+    }
+    const data = await res.json();
+    token = data.token;
+    userId = String(data.user_id);
+    localStorage.setItem("token", token);
+    localStorage.setItem("userId", userId);
+    f.reset();
+    showToast("Вход выполнен ✓", "success");
+    showMain();
+  } catch (err) {
+    showToast(err.message || "Ошибка входа", "error");
+  }
+});
+
+// === ФОРМА РЕГИСТРАЦИИ ===
+document.getElementById("register-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const equipment = [...f.querySelectorAll('fieldset:nth-of-type(1) input:checked')].map(i => i.value);
+  const injuries  = [...f.querySelectorAll('fieldset:nth-of-type(2) input:checked')].map(i => i.value);
+
+  const body = {
+    email: f.email.value.trim(),
+    password: f.password.value,
+    name: f.name.value,
+    gender: f.gender.value,
+    age: +f.age.value,
+    weight: +f.weight.value,
+    height: +f.height.value,
+    experience: f.experience.value,
+    goal: f.goal.value,
+    days_per_week: +f.days_per_week.value,
+    equipment,
+    injuries,
+  };
+
+  // Предложить привязать старый профиль, если он есть
+  const oldId = localStorage.getItem("userId");
+  if (oldId && !localStorage.getItem("token")) {
+    if (confirm("Нашли старый профиль на этом устройстве. Привязать его к аккаунту, чтобы сохранить историю?")) {
+      body.link_user_id = +oldId;
+    }
+  }
+
+  try {
+    const res = await fetch(`${API}/api/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Не удалось зарегистрироваться");
+    }
+    const data = await res.json();
+    token = data.token;
+    userId = String(data.user_id);
+    localStorage.setItem("token", token);
+    localStorage.setItem("userId", userId);
+    f.reset();
+    showToast("Аккаунт создан ✓", "success");
+    showMain();
+  } catch (err) {
+    showToast(err.message || "Ошибка регистрации", "error");
+  }
+});
+
+// === КНОПКА ВЫЙТИ ===
+document.getElementById("logout-btn").addEventListener("click", () => {
+  if (confirm("Выйти из аккаунта?")) {
+    logout();
+    showToast("Вы вышли", "success");
+  }
+});
+
+// === ИЗМЕНИТЬ ПРОФИЛЬ ===
+document.getElementById("edit-profile").addEventListener("click", () => {
+  if (confirm("Изменить профиль? Придётся заполнить анкету заново.")) {
+    showToast("Пока недоступно — используй регистрацию", "error");
+  }
+});
+
+// ===== PWA =====
 let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => {
+window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
   showInstallButton();
 });
 
 function showInstallButton() {
-  if (document.getElementById('install-btn')) return;
-  const btn = document.createElement('button');
-  btn.id = 'install-btn';
-  btn.className = 'btn-secondary';
-  btn.textContent = '📲 Установить приложение';
-  btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:1000;';
+  if (document.getElementById("install-btn")) return;
+  const btn = document.createElement("button");
+  btn.id = "install-btn";
+  btn.className = "btn-secondary";
+  btn.textContent = "📲 Установить приложение";
+  btn.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:1000;";
   btn.onclick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') btn.remove();
+    if (outcome === "accepted") btn.remove();
     deferredPrompt = null;
   };
   document.body.appendChild(btn);
 }
 
-window.addEventListener('appinstalled', () => {
-  console.log('PWA установлено');
-  const btn = document.getElementById('install-btn');
+window.addEventListener("appinstalled", () => {
+  const btn = document.getElementById("install-btn");
   if (btn) btn.remove();
 });
 
-// ===== Онлайн/офлайн статус =====
-window.addEventListener('online', () => {
-  document.body.style.filter = '';
-});
-window.addEventListener('offline', () => {
-  document.body.style.filter = 'grayscale(0.5)';
-  console.log('Офлайн — показываем кэш');
+// ===== ОНЛАЙН/ОФЛАЙН =====
+window.addEventListener("online", () => { document.body.style.filter = ""; });
+window.addEventListener("offline", () => {
+  document.body.style.filter = "grayscale(0.5)";
 });
 
 // ===== ТЕМА =====
@@ -125,44 +250,15 @@ themeToggle.addEventListener("click", () => {
   if (statsCharts.length) loadStats();
 });
 
-// ===== ОНБОРДИНГ =====
+// ===== ОНБОРДИНГ (старый — оставим неиспользуемым) =====
 document.getElementById("profile-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const f = e.target;
-  const equipment = [...f.querySelectorAll('fieldset:nth-of-type(1) input:checked')].map(i => i.value);
-  const injuries  = [...f.querySelectorAll('fieldset:nth-of-type(2) input:checked')].map(i => i.value);
-
-  const profile = {
-    name: f.name.value,
-    gender: f.gender.value,
-    age: +f.age.value,
-    weight: +f.weight.value,
-    height: +f.height.value,
-    experience: f.experience.value,
-    goal: f.goal.value,
-    days_per_week: +f.days_per_week.value,
-    equipment, injuries,
-  };
-
-  try {
-    const res = await fetch(`${API}/api/profile`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profile),
-    });
-    const data = await res.json();
-    userId = data.user_id;
-    localStorage.setItem("userId", userId);
-    showMain();
-  } catch (err) {
-    showToast("Ошибка соединения с сервером", "error");
-  }
+  showToast("Используй форму регистрации", "error");
 });
 
-// ===== ПОКАЗ ЭКРАНОВ =====
+// ===== ПОКАЗ ОСНОВНОГО ЭКРАНА =====
 async function showMain() {
-  document.getElementById("onboarding").classList.remove("active");
-  document.getElementById("main").classList.add("active");
+  showScreen("main");
   await loadProfileName();
   loadPlan();
   loadLogs();
@@ -172,7 +268,7 @@ async function showMain() {
 
 async function loadProfileName() {
   try {
-    const res = await fetch(`${API}/api/profile/${userId}`);
+    const res = await apiFetch(`/api/profile/${userId}`);
     const p = await res.json();
     document.getElementById("profile-name").textContent = `👤 ${p.name}`;
   } catch (err) {
@@ -180,13 +276,21 @@ async function loadProfileName() {
   }
 }
 
-if (userId) showMain();
+// ===== СТАРТ =====
+if (token) {
+  // Проверим, что токен валидный
+  apiFetch(`/api/me`)
+    .then(res => res.ok ? showMain() : logout())
+    .catch(() => logout());
+} else {
+  showScreen("auth");
+}
 loadExerciseBase();
 
 // ===== ТАБЫ =====
-document.querySelectorAll(".tab").forEach(t => {
+document.querySelectorAll(".tab[data-tab]").forEach(t => {
   t.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".tab[data-tab]").forEach(x => x.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
@@ -199,14 +303,13 @@ document.querySelectorAll(".tab").forEach(t => {
 // ===== ПРОГРАММА =====
 async function loadPlan() {
   try {
-    const res = await fetch(`${API}/api/plan/${userId}`);
+    const res = await apiFetch(`/api/plan/${userId}`);
     currentPlan = await res.json();
-    localStorage.setItem('cachedPlan', JSON.stringify(currentPlan));
+    localStorage.setItem("cachedPlan", JSON.stringify(currentPlan));
   } catch (err) {
-    const cached = localStorage.getItem('cachedPlan');
+    const cached = localStorage.getItem("cachedPlan");
     if (cached) {
       currentPlan = JSON.parse(cached);
-      console.log('Показываем программу из кэша');
     } else {
       return;
     }
@@ -241,7 +344,7 @@ function formatSplit(split) {
   return map[split] || split;
 }
 
-// ===== КНОПКА "ПЕРЕСОЗДАТЬ" =====
+// ===== ПЕРЕСОЗДАТЬ =====
 document.getElementById("regen-btn").addEventListener("click", () => {
   if (confirm("Пересоздать программу? Текущая будет заменена.")) {
     loadPlan();
@@ -286,11 +389,11 @@ document.getElementById("export-btn").addEventListener("click", () => {
   setTimeout(() => w.print(), 500);
 });
 
-// ===== ИСТОРИЯ ЧАТА =====
+// ===== ЧАТ =====
 async function loadChatHistory() {
   if (!userId) return;
   try {
-    const res = await fetch(`${API}/api/chat/history/${userId}`);
+    const res = await apiFetch(`/api/chat/history/${userId}`);
     const history = await res.json();
     const box = document.getElementById("chat-messages");
     box.innerHTML = "";
@@ -300,7 +403,7 @@ async function loadChatHistory() {
       chatHistory.push({ role: m.role, content: m.content });
     });
   } catch (err) {
-    console.error("Не удалось загрузить историю чата:", err);
+    console.error("Чат:", err);
   }
 }
 
@@ -308,15 +411,17 @@ async function clearChatHistory() {
   if (!userId) return;
   if (!confirm("Очистить всю историю чата с тренером?")) return;
   try {
-    await fetch(`${API}/api/chat/history/${userId}`, { method: "DELETE" });
+    await apiFetch(`/api/chat/history/${userId}`, { method: "DELETE" });
     document.getElementById("chat-messages").innerHTML = "";
     chatHistory = [];
     addMsg("История очищена. Задай новый вопрос! 💪", "ai");
     showToast("История чата очищена", "success");
   } catch (err) {
-    showToast("Не удалось очистить историю", "error");
+    showToast("Не удалось очистить", "error");
   }
 }
+
+document.getElementById("clear-chat").addEventListener("click", clearChatHistory);
 
 const chatBox = document.getElementById("chat-messages");
 
@@ -355,7 +460,7 @@ async function sendChat() {
   chatBox.scrollTop = chatBox.scrollHeight;
 
   try {
-    const res = await fetch(`${API}/api/chat`, {
+    const res = await apiFetch(`/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: +userId, message: text, history: chatHistory }),
@@ -367,24 +472,16 @@ async function sendChat() {
   } catch (err) {
     loading.remove();
     addMsg("⚠️ Ошибка соединения с сервером", "ai");
-    showToast("Сервер не отвечает", "error");
   }
 }
 
-// ===== ДНЕВНИК: обработка формы =====
+// ===== ДНЕВНИК =====
 document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
 
-  // Защита от отрицательных значений
-  if (+f.weight.value < 0) {
-    showToast("Вес не может быть отрицательным", "error");
-    return;
-  }
-  if (+f.reps.value < 1 || +f.sets.value < 1) {
-    showToast("Повторы и подходы — минимум 1", "error");
-    return;
-  }
+  if (+f.weight.value < 0) { showToast("Вес не может быть отрицательным", "error"); return; }
+  if (+f.reps.value < 1 || +f.sets.value < 1) { showToast("Повторы и подходы — минимум 1", "error"); return; }
 
   const payload = {
     user_id: +userId,
@@ -393,13 +490,14 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
     reps: +f.reps.value,
     sets: +f.sets.value,
   };
+
   try {
-    const res = await fetch(`${API}/api/log`, {
+    const res = await apiFetch(`/api/log`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error("server error");
+    if (!res.ok) throw new Error("server");
     f.reset();
     document.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
     updateWeightPlaceholder("");
@@ -415,11 +513,10 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   }
 });
 
-// ===== ДНЕВНИК: загрузка истории =====
-let logPeriod = 7; // дней: 7 / 30 / 0 (всё)
+let logPeriod = 7;
 
 async function loadLogs() {
-  const res = await fetch(`${API}/api/logs/${userId}`);
+  const res = await apiFetch(`/api/logs/${userId}`);
   const allLogs = await res.json();
 
   let logs = allLogs;
@@ -449,14 +546,10 @@ async function loadLogs() {
 
   const formatDate = (isoKey) => {
     const d = new Date(isoKey + "T00:00:00");
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const yest = new Date(today); yest.setDate(yest.getDate() - 1);
     if (d.getTime() === today.getTime()) return "Сегодня";
-    if (d.getTime() === yesterday.getTime()) return "Вчера";
-
+    if (d.getTime() === yest.getTime()) return "Вчера";
     return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   };
 
@@ -479,29 +572,25 @@ async function loadLogs() {
     </div>
   `).join("");
 
-  // Удаление
   document.querySelectorAll(".log-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (confirm("Удалить запись?")) {
         try {
-          await fetch(`${API}/api/log/${btn.dataset.id}`, { method: "DELETE" });
+          await apiFetch(`/api/log/${btn.dataset.id}`, { method: "DELETE" });
           await loadLogs();
           showToast("Запись удалена", "success");
-        } catch (err) {
-          showToast("Не удалось удалить", "error");
-        }
+        } catch (err) { showToast("Ошибка удаления", "error"); }
       }
     });
   });
 
-  // Повторить запись
   document.querySelectorAll(".log-repeat").forEach(btn => {
     btn.addEventListener("click", () => {
       const f = document.getElementById("log-form");
       f.exercise.value = btn.dataset.exercise;
-      f.weight.value   = btn.dataset.weight;
-      f.reps.value     = btn.dataset.reps;
-      f.sets.value     = btn.dataset.sets;
+      f.weight.value = btn.dataset.weight;
+      f.reps.value = btn.dataset.reps;
+      f.sets.value = btn.dataset.sets;
       updateWeightPlaceholder(btn.dataset.exercise);
       document.getElementById("log-form").scrollIntoView({ behavior: "smooth", block: "center" });
       setTimeout(() => f.weight.focus(), 300);
@@ -510,7 +599,6 @@ async function loadLogs() {
   });
 }
 
-// Обработчик переключателя периода
 document.querySelectorAll("#log-period-switch .btn-secondary").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("#log-period-switch .btn-secondary").forEach(b => b.classList.remove("active"));
@@ -520,7 +608,7 @@ document.querySelectorAll("#log-period-switch .btn-secondary").forEach(btn => {
   });
 });
 
-// ===== КНОПКИ УПРАЖНЕНИЙ В ДНЕВНИКЕ =====
+// ===== ЧИПЫ УПРАЖНЕНИЙ =====
 function buildExercisePicker() {
   const picker = document.getElementById("exercise-picker");
   if (!picker) return;
@@ -555,7 +643,7 @@ function buildExercisePicker() {
   });
 }
 
-// ===== АВТОДОПОЛНЕНИЕ УПРАЖНЕНИЙ =====
+// ===== АВТОДОПОЛНЕНИЕ =====
 function setupExerciseAutocomplete() {
   const input = document.getElementById("log-exercise-input");
   const dropdown = document.getElementById("exercise-dropdown");
@@ -567,28 +655,22 @@ function setupExerciseAutocomplete() {
     dropdown.innerHTML = "";
     if (q.length < 1) return;
 
-    // Программа
     const planNames = currentPlan?.week?.flatMap(d => (d.exercises || []).map(e => e.name)) || [];
     const planSet = new Set(planNames);
-
-    // База с сервера
     const baseNames = exerciseBase.map(e => e.name).filter(Boolean);
 
-    // Объединяем без дублей
     const combined = [
       ...planNames.map(name => ({ name, fromPlan: true })),
       ...baseNames.filter(n => !planSet.has(n)).map(name => ({ name, fromPlan: false })),
     ];
 
     const seen = new Set();
-    const matches = combined
-      .filter(item => {
-        if (!item.name.toLowerCase().includes(q)) return false;
-        if (seen.has(item.name)) return false;
-        seen.add(item.name);
-        return true;
-      })
-      .slice(0, 10);
+    const matches = combined.filter(item => {
+      if (!item.name.toLowerCase().includes(q)) return false;
+      if (seen.has(item.name)) return false;
+      seen.add(item.name);
+      return true;
+    }).slice(0, 10);
 
     if (!matches.length) return;
 
@@ -620,7 +702,7 @@ function setupExerciseAutocomplete() {
 
 // ===== СТАТИСТИКА =====
 async function loadStats() {
-  const res = await fetch(`${API}/api/stats/${userId}`);
+  const res = await apiFetch(`/api/stats/${userId}`);
   const stats = await res.json();
   const el = document.getElementById("stats-content");
 
@@ -686,16 +768,8 @@ async function loadStats() {
           }
         },
         scales: {
-          x: {
-            ticks: { color: textColor, font: { size: 11 } },
-            grid: { display: false },
-            border: { display: false }
-          },
-          y: {
-            ticks: { color: textColor, font: { size: 11 } },
-            grid: { color: textColor + "10" },
-            border: { display: false }
-          }
+          x: { ticks: { color: textColor, font: { size: 11 } }, grid: { display: false }, border: { display: false } },
+          y: { ticks: { color: textColor, font: { size: 11 } }, grid: { color: textColor + "10" }, border: { display: false } }
         }
       }
     });
@@ -707,10 +781,9 @@ async function loadStats() {
 async function loadNutrition() {
   if (!userId) return;
   try {
-    const res = await fetch(`${API}/api/nutrition/${userId}`);
+    const res = await apiFetch(`/api/nutrition/${userId}`);
     const n = await res.json();
-    const el = document.getElementById("nutrition-norm");
-    el.innerHTML = `
+    document.getElementById("nutrition-norm").innerHTML = `
       <div class="kbju-grid">
         <div class="kbju-card"><div class="label">Калории</div><div class="value cal">${n.target_calories}</div></div>
         <div class="kbju-card"><div class="label">Белки</div><div class="value protein">${n.protein} г</div></div>
@@ -718,15 +791,13 @@ async function loadNutrition() {
         <div class="kbju-card"><div class="label">Углеводы</div><div class="value carbs">${n.carbs} г</div></div>
       </div>
     `;
-  } catch (err) {
-    console.error("Не удалось загрузить норму КБЖУ:", err);
-  }
+  } catch (err) { console.error(err); }
 }
 
 async function loadMeals() {
   if (!userId) return;
   try {
-    const res = await fetch(`${API}/api/meals/${userId}`);
+    const res = await apiFetch(`/api/meals/${userId}`);
     const meals = await res.json();
 
     const today = new Date().toDateString();
@@ -738,7 +809,7 @@ async function loadMeals() {
       carbs: acc.carbs + (m.carbs || 0),
     }), { calories: 0, protein: 0, fat: 0, carbs: 0 });
 
-    const normRes = await fetch(`${API}/api/nutrition/${userId}`);
+    const normRes = await apiFetch(`/api/nutrition/${userId}`);
     const norm = await normRes.json();
     const pct = Math.min(100, Math.round((total.calories / norm.target_calories) * 100));
 
@@ -770,15 +841,13 @@ async function loadMeals() {
     listEl.querySelectorAll(".meal-delete").forEach(btn => {
       btn.addEventListener("click", async () => {
         if (confirm("Удалить запись?")) {
-          await fetch(`${API}/api/meal/${btn.dataset.id}`, { method: "DELETE" });
+          await apiFetch(`/api/meal/${btn.dataset.id}`, { method: "DELETE" });
           loadMeals();
           showToast("Приём пищи удалён", "success");
         }
       });
     });
-  } catch (err) {
-    console.error("Не удалось загрузить приёмы пищи:", err);
-  }
+  } catch (err) { console.error(err); }
 }
 
 // ===== ПОИСК ПРОДУКТОВ =====
@@ -789,10 +858,7 @@ let searchTimer = null;
 foodSearchInput.addEventListener("input", () => {
   clearTimeout(searchTimer);
   const q = foodSearchInput.value.trim();
-  if (q.length < 2) {
-    foodDropdown.innerHTML = "";
-    return;
-  }
+  if (q.length < 2) { foodDropdown.innerHTML = ""; return; }
   searchTimer = setTimeout(async () => {
     try {
       const res = await fetch(`${API}/api/foods?q=${encodeURIComponent(q)}`);
@@ -809,16 +875,12 @@ foodSearchInput.addEventListener("input", () => {
       foodDropdown.querySelectorAll(".food-item").forEach(el => {
         el.addEventListener("click", () => pickFood(el.dataset));
       });
-    } catch (err) {
-      console.error("Поиск продуктов не удался:", err);
-    }
+    } catch (err) { console.error(err); }
   }, 250);
 });
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest(".food-search-wrap")) {
-    foodDropdown.innerHTML = "";
-  }
+  if (!e.target.closest(".food-search-wrap")) foodDropdown.innerHTML = "";
 });
 
 function pickFood(ds) {
@@ -862,21 +924,14 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
 
-  // Защита от отрицательных значений
   const numFields = ["grams", "calories", "protein", "fat", "carbs"];
   for (const name of numFields) {
-    if (+f[name].value < 0) {
-      showToast("Значения не могут быть отрицательными", "error");
-      return;
-    }
+    if (+f[name].value < 0) { showToast("Значения не могут быть отрицательными", "error"); return; }
   }
-  if (+f.grams.value < 1) {
-    showToast("Граммы — минимум 1", "error");
-    return;
-  }
+  if (+f.grams.value < 1) { showToast("Граммы — минимум 1", "error"); return; }
 
   try {
-    await fetch(`${API}/api/meal`, {
+    await apiFetch(`/api/meal`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -892,15 +947,5 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
     f.reset();
     loadMeals();
     showToast("Приём пищи добавлен ✓", "success");
-  } catch (err) {
-    showToast("Не удалось добавить", "error");
-  }
-});
-
-// ===== КНОПКА "ИЗМЕНИТЬ ПРОФИЛЬ" =====
-document.getElementById("edit-profile").addEventListener("click", () => {
-  if (confirm("Изменить профиль? Потребуется заполнить анкету заново.")) {
-    localStorage.removeItem("userId");
-    location.reload();
-  }
+  } catch (err) { showToast("Не удалось добавить", "error"); }
 });
