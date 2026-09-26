@@ -185,12 +185,6 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("edit-profile").addEventListener("click", () => {
-  if (confirm("Изменить профиль? Придётся заполнить анкету заново.")) {
-    showToast("Пока недоступно — используй регистрацию", "error");
-  }
-});
-
 // ===== PWA =====
 let deferredPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => {
@@ -1437,6 +1431,97 @@ if (sliderPinBtn) {
     } finally {
       sliderPinBtn.disabled = false;
       sliderPinBtn.textContent = "📌 Закрепить";
+    }
+  });
+}
+// ============================================================
+// ===== РЕДАКТИРОВАНИЕ ПРОФИЛЯ ===============================
+// ============================================================
+
+const editProfileModal = document.getElementById("edit-profile-modal");
+const editProfileForm = document.getElementById("edit-profile-form");
+const editProfileClose = document.getElementById("edit-profile-close");
+
+document.getElementById("edit-profile").addEventListener("click", openEditProfile);
+if (editProfileClose) {
+  editProfileClose.addEventListener("click", () => {
+    editProfileModal.style.display = "none";
+  });
+}
+
+async function openEditProfile() {
+  try {
+    const res = await apiFetch(`/api/profile/${userId}`);
+    if (!res.ok) throw new Error("profile fetch failed");
+    const p = await res.json();
+
+    const f = editProfileForm;
+    f.name.value = p.name || "";
+    f.gender.value = p.gender || "";
+    f.age.value = p.age || "";
+    f.weight.value = p.weight || "";
+    f.height.value = p.height || "";
+    f.experience.value = p.experience || "";
+    f.goal.value = p.goal || "";
+    f.days_per_week.value = p.days_per_week || "";
+
+    // Оборудование
+    f.querySelectorAll('input[name="equipment"]').forEach(cb => {
+      cb.checked = (p.equipment || []).includes(cb.value);
+    });
+
+    // Травмы
+    f.querySelectorAll('input[name="injuries"]').forEach(cb => {
+      cb.checked = (p.injuries || []).includes(cb.value);
+    });
+
+    editProfileModal.style.display = "flex";
+  } catch (err) {
+    showToast("Не удалось загрузить профиль", "error");
+    console.error(err);
+  }
+}
+
+if (editProfileForm) {
+  editProfileForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+
+    const equipment = [...f.querySelectorAll('input[name="equipment"]:checked')].map(i => i.value);
+    const injuries  = [...f.querySelectorAll('input[name="injuries"]:checked')].map(i => i.value);
+
+    const body = {
+      name: f.name.value.trim(),
+      gender: f.gender.value,
+      age: +f.age.value,
+      weight: +f.weight.value,
+      height: +f.height.value,
+      experience: f.experience.value,
+      goal: f.goal.value,
+      days_per_week: +f.days_per_week.value,
+      equipment,
+      injuries,
+    };
+
+    try {
+      const res = await apiFetch(`/api/profile/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("update failed");
+
+      showToast("Профиль обновлён ✓", "success");
+      editProfileModal.style.display = "none";
+
+      // Обновляем имя в шапке
+      await loadProfileName();
+
+      // Пересчитываем КБЖУ — данные изменились
+      loadNutrition();
+    } catch (err) {
+      showToast("Не удалось сохранить профиль", "error");
+      console.error(err);
     }
   });
 }
