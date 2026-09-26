@@ -39,6 +39,27 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
+# ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
+
+def require_auth(authorization: Optional[str]) -> int:
+    """Возвращает user_id из токена или бросает 401."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Требуется авторизация")
+    token = authorization.replace("Bearer ", "")
+    token_user_id = get_user_id_from_token(token)
+    if not token_user_id:
+        raise HTTPException(401, "Недействительный токен")
+    return token_user_id
+
+
+def check_own(authorization: Optional[str], user_id: int) -> int:
+    """Проверяет, что токен валиден и принадлежит user_id."""
+    token_user_id = require_auth(authorization)
+    if token_user_id != user_id:
+        raise HTTPException(403, "Доступ запрещён")
+    return token_user_id
+
+
 # ===== PYDANTIC-МОДЕЛИ =====
 
 class ProfileIn(BaseModel):
@@ -118,8 +139,8 @@ def create_profile(p: ProfileIn):
     return {"user_id": user_id}
 
 
-@app.get("/api/profile/{user_id}")
-def get_profile(user_id: int):
+def _get_profile_data(user_id: int):
+    """Внутренняя функция: возвращает dict профиля или бросает 404."""
     db = SessionLocal()
     u = db.query(User).get(user_id)
     db.close()
@@ -133,17 +154,25 @@ def get_profile(user_id: int):
     }
 
 
+@app.get("/api/profile/{user_id}")
+def get_profile(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
+    return _get_profile_data(user_id)
+
+
 @app.get("/api/plan/{user_id}")
-def get_plan(user_id: int):
-    profile = get_profile(user_id)
+def get_plan(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
+    profile = _get_profile_data(user_id)
     return generate_plan(profile)
 
 
 # ===== ЧАТ С ТРЕНЕРОМ =====
 
 @app.post("/api/chat")
-async def chat(c: ChatIn):
-    profile = get_profile(c.user_id)
+async def chat(c: ChatIn, authorization: Optional[str] = Header(None)):
+    check_own(authorization, c.user_id)
+    profile = _get_profile_data(c.user_id)
 
     db = SessionLocal()
     db_messages = (
@@ -169,7 +198,8 @@ async def chat(c: ChatIn):
 
 
 @app.get("/api/chat/history/{user_id}")
-def get_chat_history(user_id: int):
+def get_chat_history(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     rows = (
         db.query(ChatMessage)
@@ -186,7 +216,8 @@ def get_chat_history(user_id: int):
 
 
 @app.delete("/api/chat/history/{user_id}")
-def clear_chat_history(user_id: int):
+def clear_chat_history(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     db.query(ChatMessage).filter_by(user_id=user_id).delete()
     db.commit()
@@ -197,7 +228,8 @@ def clear_chat_history(user_id: int):
 # ===== ДНЕВНИК ТРЕНИРОВОК =====
 
 @app.post("/api/log")
-def add_log(l: LogIn):
+def add_log(l: LogIn, authorization: Optional[str] = Header(None)):
+    check_own(authorization, l.user_id)
     db = SessionLocal()
     log = WorkoutLog(
         user_id=l.user_id, exercise=l.exercise,
@@ -210,7 +242,8 @@ def add_log(l: LogIn):
 
 
 @app.get("/api/logs/{user_id}")
-def get_logs(user_id: int):
+def get_logs(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     rows = db.query(WorkoutLog).filter_by(user_id=user_id).order_by(WorkoutLog.date.desc()).all()
     db.close()
@@ -222,12 +255,16 @@ def get_logs(user_id: int):
 
 
 @app.delete("/api/log/{log_id}")
-def delete_log(log_id: int):
+def delete_log(log_id: int, authorization: Optional[str] = Header(None)):
+    token_user_id = require_auth(authorization)
     db = SessionLocal()
     log = db.query(WorkoutLog).get(log_id)
     if not log:
         db.close()
         raise HTTPException(404, "Запись не найдена")
+    if log.user_id != token_user_id:
+        db.close()
+        raise HTTPException(403, "Доступ запрещён")
     db.delete(log)
     db.commit()
     db.close()
@@ -235,7 +272,8 @@ def delete_log(log_id: int):
 
 
 @app.get("/api/stats/{user_id}")
-def get_stats(user_id: int):
+def get_stats(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     rows = db.query(WorkoutLog).filter_by(user_id=user_id).order_by(WorkoutLog.date.asc()).all()
     db.close()
@@ -270,7 +308,8 @@ def get_stats(user_id: int):
 # ===== ПИТАНИЕ =====
 
 @app.post("/api/meal")
-def add_meal(m: MealIn):
+def add_meal(m: MealIn, authorization: Optional[str] = Header(None)):
+    check_own(authorization, m.user_id)
     db = SessionLocal()
     meal = Meal(
         user_id=m.user_id, name=m.name, grams=m.grams,
@@ -283,7 +322,8 @@ def add_meal(m: MealIn):
 
 
 @app.get("/api/meals/{user_id}")
-def get_meals(user_id: int):
+def get_meals(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     rows = db.query(Meal).filter_by(user_id=user_id).order_by(Meal.date.desc()).all()
     db.close()
@@ -297,12 +337,16 @@ def get_meals(user_id: int):
 
 
 @app.delete("/api/meal/{meal_id}")
-def delete_meal(meal_id: int):
+def delete_meal(meal_id: int, authorization: Optional[str] = Header(None)):
+    token_user_id = require_auth(authorization)
     db = SessionLocal()
     meal = db.query(Meal).get(meal_id)
     if not meal:
         db.close()
         raise HTTPException(404, "Запись не найдена")
+    if meal.user_id != token_user_id:
+        db.close()
+        raise HTTPException(403, "Доступ запрещён")
     db.delete(meal)
     db.commit()
     db.close()
@@ -310,8 +354,9 @@ def delete_meal(meal_id: int):
 
 
 @app.get("/api/nutrition/{user_id}")
-def get_nutrition(user_id: int):
-    profile = get_profile(user_id)
+def get_nutrition(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
+    profile = _get_profile_data(user_id)
 
     if profile["gender"] == "male":
         bmr = 10 * profile["weight"] + 6.25 * profile["height"] - 5 * profile["age"] + 5
@@ -353,36 +398,9 @@ def get_nutrition(user_id: int):
     }
 
 
-# ===== БАЗА ПРОДУКТОВ =====
-
-@app.get("/api/foods")
-def search_foods(q: str = ""):
-    path = Path(__file__).parent / "foods.json"
-    foods = json.loads(path.read_text(encoding="utf-8"))
-
-    if q:
-        q_lower = q.lower()
-        foods = [f for f in foods if q_lower in f["name"].lower()]
-
-    return foods[:30]
-
-
-# ===== БАЗА УПРАЖНЕНИЙ =====
-
-@app.get("/api/exercises")
-def get_exercises(q: str = "", limit: int = 200):
-    path = Path(__file__).parent / "exercises.json"
-    exercises = json.loads(path.read_text(encoding="utf-8"))
-
-    if q:
-        q_lower = q.lower()
-        exercises = [e for e in exercises if q_lower in e["name"].lower()]
-
-    return exercises[:limit]
-
-
 @app.get("/api/meals/history/{user_id}")
-def get_meals_history(user_id: int, days: int = 7):
+def get_meals_history(user_id: int, days: int = 7, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     cutoff = datetime.utcnow() - timedelta(days=days)
     rows = (
@@ -437,6 +455,34 @@ def get_meals_history(user_id: int, days: int = 7):
         avg = {"calories": 0, "protein": 0, "fat": 0, "carbs": 0, "days_tracked": 0}
 
     return {"days": result, "average": avg}
+
+
+# ===== БАЗА ПРОДУКТОВ =====
+
+@app.get("/api/foods")
+def search_foods(q: str = ""):
+    path = Path(__file__).parent / "foods.json"
+    foods = json.loads(path.read_text(encoding="utf-8"))
+
+    if q:
+        q_lower = q.lower()
+        foods = [f for f in foods if q_lower in f["name"].lower()]
+
+    return foods[:30]
+
+
+# ===== БАЗА УПРАЖНЕНИЙ =====
+
+@app.get("/api/exercises")
+def get_exercises(q: str = "", limit: int = 200):
+    path = Path(__file__).parent / "exercises.json"
+    exercises = json.loads(path.read_text(encoding="utf-8"))
+
+    if q:
+        q_lower = q.lower()
+        exercises = [e for e in exercises if q_lower in e["name"].lower()]
+
+    return exercises[:limit]
 
 
 # ===== АВТОРИЗАЦИЯ =====
@@ -508,19 +554,15 @@ def login(l: LoginIn):
 
 @app.get("/api/me")
 def get_me(authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Требуется авторизация")
-    token = authorization.replace("Bearer ", "")
-    user_id = get_user_id_from_token(token)
-    if not user_id:
-        raise HTTPException(401, "Недействительный токен")
-    return get_profile(user_id)
+    user_id = require_auth(authorization)
+    return _get_profile_data(user_id)
 
 
 # ===== ДОСТИЖЕНИЯ =====
 
 @app.get("/api/achievements/{user_id}")
-def get_achievements(user_id: int):
+def get_achievements(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     user = db.query(User).get(user_id)
     if not user:
@@ -634,33 +676,31 @@ def is_cardio(name: str) -> bool:
 
 @app.post("/api/photos/upload")
 async def upload_photo(
+    authorization: Optional[str] = Header(None),
     user_id: int = Form(...),
     weight: Optional[float] = Form(None),
     note: Optional[str] = Form(None),
     file: UploadFile = File(...),
 ):
-    """Загружает фото прогресса. Сохраняет в uploads/ с уникальным именем."""
-    # Проверяем пользователя
+    check_own(authorization, user_id)
+
     db = SessionLocal()
     user = db.query(User).get(user_id)
     if not user:
         db.close()
         raise HTTPException(404, "Пользователь не найден")
 
-    # Проверяем тип файла
     allowed = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
     ext = Path(file.filename or "").suffix.lower()
     if ext not in allowed:
         db.close()
         raise HTTPException(400, "Допустимы только JPG, PNG, WEBP, HEIC")
 
-    # Уникальное имя: user_1_20260926_153045_ab12cd.jpg
     stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    uniq = uuid.uuid4().hex[:6]
+    uniq = uuid.uuid4().hex[:16]
     filename = f"user_{user_id}_{stamp}_{uniq}{ext}"
     dest = UPLOAD_DIR / filename
 
-    # Сохраняем файл
     try:
         with dest.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -670,7 +710,6 @@ async def upload_photo(
     finally:
         file.file.close()
 
-    # Пишем в БД
     photo = ProgressPhoto(
         user_id=user_id,
         filename=filename,
@@ -694,8 +733,8 @@ async def upload_photo(
 
 
 @app.get("/api/photos/{user_id}")
-def list_photos(user_id: int):
-    """Список всех фото пользователя, от новых к старым. Закреплённое — первым."""
+def list_photos(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     rows = (
         db.query(ProgressPhoto)
@@ -719,8 +758,8 @@ def list_photos(user_id: int):
 
 
 @app.get("/api/photos/{user_id}/stats")
-def photos_stats(user_id: int):
-    """Статистика: всего фото, первое, последнее, разница по весу."""
+def photos_stats(user_id: int, authorization: Optional[str] = Header(None)):
+    check_own(authorization, user_id)
     db = SessionLocal()
     rows = (
         db.query(ProgressPhoto)
@@ -732,11 +771,8 @@ def photos_stats(user_id: int):
 
     if not rows:
         return {
-            "count": 0,
-            "first": None,
-            "last": None,
-            "weight_diff": None,
-            "last_date": None,
+            "count": 0, "first": None, "last": None,
+            "weight_diff": None, "last_date": None,
         }
 
     first = rows[0]
@@ -763,15 +799,17 @@ def photos_stats(user_id: int):
 
 
 @app.delete("/api/photos/{photo_id}")
-def delete_photo(photo_id: int):
-    """Удаляет фото из БД и с диска."""
+def delete_photo(photo_id: int, authorization: Optional[str] = Header(None)):
+    token_user_id = require_auth(authorization)
     db = SessionLocal()
     photo = db.query(ProgressPhoto).get(photo_id)
     if not photo:
         db.close()
         raise HTTPException(404, "Фото не найдено")
+    if photo.user_id != token_user_id:
+        db.close()
+        raise HTTPException(403, "Доступ запрещён")
 
-    # Удаляем файл
     file_path = UPLOAD_DIR / photo.filename
     if file_path.exists():
         try:
@@ -786,17 +824,18 @@ def delete_photo(photo_id: int):
 
 
 @app.post("/api/photos/{photo_id}/pin")
-def pin_photo(photo_id: int):
-    """Закрепляет фото как главное. Снимает закрепление с остальных фото этого юзера."""
+def pin_photo(photo_id: int, authorization: Optional[str] = Header(None)):
+    token_user_id = require_auth(authorization)
     db = SessionLocal()
     photo = db.query(ProgressPhoto).get(photo_id)
     if not photo:
         db.close()
         raise HTTPException(404, "Фото не найдено")
+    if photo.user_id != token_user_id:
+        db.close()
+        raise HTTPException(403, "Доступ запрещён")
 
-    # Снимаем закрепление со всех фото этого пользователя
     db.query(ProgressPhoto).filter_by(user_id=photo.user_id).update({"is_pinned": False})
-    # Ставим текущее
     photo.is_pinned = True
     db.commit()
     db.close()
