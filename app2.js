@@ -236,7 +236,7 @@ themeToggle.addEventListener("click", () => {
   if (statsCharts.length) loadStats();
 });
 
-// ===== СТАРЫЙ ОНБОРДИНГ (не используется) =====
+// ===== СТАРЫЙ ОНБОРДИНГ =====
 const profileForm = document.getElementById("profile-form");
 if (profileForm) {
   profileForm.addEventListener("submit", async (e) => {
@@ -286,6 +286,7 @@ document.querySelectorAll(".tab[data-tab]").forEach(t => {
     if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); loadPhotos(); }
     if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); }
     if (t.dataset.tab === "log") buildExercisePicker();
+    if (t.dataset.tab === "calendar") { initCalendar(); }
   });
 });
 
@@ -1019,11 +1020,9 @@ let photosCache = [];
 let sliderIndex = 0;
 let pendingPhotoBlob = null;
 
-// --- Получаем оба input ---
 const cameraInput = document.getElementById("photo-input-camera");
 const galleryInput = document.getElementById("photo-input-gallery");
 
-// --- Клик по кнопке «📷 Камера» ---
 const btnCamera = document.getElementById("photo-pick-camera");
 if (btnCamera && cameraInput) {
   btnCamera.addEventListener("click", (e) => {
@@ -1032,7 +1031,6 @@ if (btnCamera && cameraInput) {
   });
 }
 
-// --- Клик по кнопке «🖼 Галерея» ---
 const btnGallery = document.getElementById("photo-pick-gallery");
 if (btnGallery && galleryInput) {
   btnGallery.addEventListener("click", (e) => {
@@ -1041,7 +1039,6 @@ if (btnGallery && galleryInput) {
   });
 }
 
-// --- Обработка выбранного фото (общая для камеры и галереи) ---
 async function handlePhotoPick(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -1060,7 +1057,6 @@ async function handlePhotoPick(e) {
 if (cameraInput) cameraInput.addEventListener("change", handlePhotoPick);
 if (galleryInput) galleryInput.addEventListener("change", handlePhotoPick);
 
-// --- Загрузка списка фото ---
 async function loadPhotos() {
   if (!userId) return;
   try {
@@ -1074,7 +1070,6 @@ async function loadPhotos() {
   }
 }
 
-// --- Сводка ---
 function renderPhotosSummary(photos) {
   const el = document.getElementById("photos-summary");
   if (!el) return;
@@ -1117,7 +1112,6 @@ function renderPhotosSummary(photos) {
   `;
 }
 
-// --- Timeline ---
 function renderPhotosTimeline(photos) {
   const el = document.getElementById("photos-timeline");
   const emptyEl = document.getElementById("photos-empty");
@@ -1156,7 +1150,6 @@ function formatPhotoDate(iso) {
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-// --- Модалка ---
 const photoModal = document.getElementById("photo-modal");
 const photoPreview = document.getElementById("photo-preview");
 const photoPreviewPlaceholder = document.getElementById("photo-preview-placeholder");
@@ -1189,7 +1182,6 @@ function closePhotoModal() {
   pendingPhotoBlob = null;
 }
 
-// --- Сжатие ---
 function compressImage(file, maxSize, quality) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1221,7 +1213,6 @@ function compressImage(file, maxSize, quality) {
   });
 }
 
-// --- Сохранение фото ---
 if (photoSaveBtn) {
   photoSaveBtn.addEventListener("click", async () => {
     if (!pendingPhotoBlob) {
@@ -1354,6 +1345,7 @@ function checkWeeklyPhotoReminder(photos) {
     showToast("📸 Пора сделать новое фото прогресса!", "success");
   }, 1500);
 }
+
 // ============================================================
 // ===== УДАЛЕНИЕ / ЗАКРЕПЛЕНИЕ ФОТО ==========================
 // ============================================================
@@ -1375,7 +1367,6 @@ if (sliderDeleteBtn) {
       if (!res.ok) throw new Error("delete failed");
       showToast("Фото удалено", "success");
 
-      // Обновляем кэш
       photosCache.splice(sliderIndex, 1);
 
       if (!photosCache.length) {
@@ -1384,7 +1375,6 @@ if (sliderDeleteBtn) {
         return;
       }
 
-      // Если удалили последнее — прыгаем на предыдущее
       if (sliderIndex >= photosCache.length) {
         sliderIndex = photosCache.length - 1;
       }
@@ -1418,8 +1408,6 @@ if (sliderPinBtn) {
       if (!res.ok) throw new Error("pin failed");
       showToast("📌 Фото закреплено", "success");
       await loadPhotos();
-      // Пересинхронизируем photosCache — loadPhotos() уже обновил
-      // Ищем закреплённое фото в новом photosCache
       const newPinned = photosCache.find(x => x.is_pinned);
       if (newPinned) {
         sliderIndex = photosCache.findIndex(x => x.id === newPinned.id);
@@ -1434,6 +1422,7 @@ if (sliderPinBtn) {
     }
   });
 }
+
 // ============================================================
 // ===== РЕДАКТИРОВАНИЕ ПРОФИЛЯ ===============================
 // ============================================================
@@ -1456,6 +1445,11 @@ async function openEditProfile() {
     const p = await res.json();
 
     const f = editProfileForm;
+    if (!f) {
+      showToast("Модалка не найдена — обнови страницу", "error");
+      return;
+    }
+
     f.name.value = p.name || "";
     f.gender.value = p.gender || "";
     f.age.value = p.age || "";
@@ -1465,12 +1459,10 @@ async function openEditProfile() {
     f.goal.value = p.goal || "";
     f.days_per_week.value = p.days_per_week || "";
 
-    // Оборудование
     f.querySelectorAll('input[name="equipment"]').forEach(cb => {
       cb.checked = (p.equipment || []).includes(cb.value);
     });
 
-    // Травмы
     f.querySelectorAll('input[name="injuries"]').forEach(cb => {
       cb.checked = (p.injuries || []).includes(cb.value);
     });
@@ -1514,14 +1506,220 @@ if (editProfileForm) {
       showToast("Профиль обновлён ✓", "success");
       editProfileModal.style.display = "none";
 
-      // Обновляем имя в шапке
       await loadProfileName();
-
-      // Пересчитываем КБЖУ — данные изменились
       loadNutrition();
     } catch (err) {
       showToast("Не удалось сохранить профиль", "error");
       console.error(err);
     }
   });
+}
+
+// ============================================================
+// ===== КАЛЕНДАРЬ ТРЕНИРОВОК =================================
+// ============================================================
+
+const MONTHS_RU = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+
+let calendarState = {
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  initialized: false,
+  cache: {},
+};
+
+function initCalendar() {
+  if (!calendarState.initialized) {
+    calendarState.initialized = true;
+
+    document.getElementById("cal-prev").addEventListener("click", () => {
+      calendarState.month -= 1;
+      if (calendarState.month < 1) {
+        calendarState.month = 12;
+        calendarState.year -= 1;
+      }
+      renderCalendar();
+    });
+
+    document.getElementById("cal-next").addEventListener("click", () => {
+      calendarState.month += 1;
+      if (calendarState.month > 12) {
+        calendarState.month = 1;
+        calendarState.year += 1;
+      }
+      renderCalendar();
+    });
+
+    const dayClose = document.getElementById("day-modal-close");
+    if (dayClose) {
+      dayClose.addEventListener("click", () => {
+        document.getElementById("day-modal").style.display = "none";
+      });
+    }
+  }
+  renderCalendar();
+}
+
+async function renderCalendar() {
+  const { year, month } = calendarState;
+
+  document.getElementById("cal-title").textContent =
+    `${MONTHS_RU[month - 1]} ${year}`;
+
+  const grid = document.getElementById("calendar-grid");
+  grid.innerHTML = "<div class='hint' style='grid-column:1/-1;'>Загрузка…</div>";
+
+  const cacheKey = `${year}-${String(month).padStart(2, "0")}`;
+  let daysData = calendarState.cache[cacheKey];
+
+  if (!daysData) {
+    try {
+      const res = await apiFetch(`/api/calendar/${userId}?year=${year}&month=${month}`);
+      if (!res.ok) throw new Error("calendar fetch failed");
+      const data = await res.json();
+      daysData = data.days || {};
+      calendarState.cache[cacheKey] = daysData;
+    } catch (err) {
+      grid.innerHTML = "<div class='hint' style='grid-column:1/-1;'>Не удалось загрузить календарь</div>";
+      console.error(err);
+      return;
+    }
+  }
+
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const daysInMonth = lastDay.getDate();
+
+  let startWeekday = firstDay.getDay();
+  startWeekday = (startWeekday + 6) % 7;
+
+  const today = new Date();
+  const todayKey =
+    today.getFullYear() === year && today.getMonth() + 1 === month
+      ? today.getDate()
+      : null;
+
+  let html = "";
+
+  for (let i = 0; i < startWeekday; i++) {
+    html += `<div class="cal-cell empty"></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const info = daysData[key] || { workouts: 0, meals: 0, photos: 0, calories: 0 };
+
+    const hasWorkouts = info.workouts > 0;
+    const hasMeals = info.meals > 0;
+    const hasPhotos = info.photos > 0;
+    const isToday = todayKey === day;
+
+    const dots = [
+      hasWorkouts ? '<span class="cal-dot workout"></span>' : "",
+      hasMeals ? '<span class="cal-dot meal"></span>' : "",
+      hasPhotos ? '<span class="cal-dot photo"></span>' : "",
+    ].join("");
+
+    const classes = ["cal-cell"];
+    if (isToday) classes.push("today");
+    if (hasWorkouts || hasMeals || hasPhotos) classes.push("has-activity");
+
+    html += `
+      <div class="${classes.join(" ")}" data-date="${key}">
+        <div class="cal-num">${day}</div>
+        <div class="cal-dots">${dots}</div>
+      </div>
+    `;
+  }
+
+  grid.innerHTML = html;
+
+  grid.querySelectorAll(".cal-cell[data-date]").forEach(cell => {
+    cell.addEventListener("click", () => {
+      openDayModal(cell.dataset.date);
+    });
+  });
+}
+
+async function openDayModal(dateKey) {
+  const modal = document.getElementById("day-modal");
+  const title = document.getElementById("day-modal-title");
+  const content = document.getElementById("day-modal-content");
+
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  title.textContent = dt.toLocaleDateString("ru-RU", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+
+  content.innerHTML = "<p class='hint'>Загрузка…</p>";
+  modal.style.display = "flex";
+
+  try {
+    const res = await apiFetch(`/api/day/${userId}?date=${dateKey}`);
+    if (!res.ok) throw new Error("day fetch failed");
+    const data = await res.json();
+
+    const isEmpty =
+      !data.workouts.length && !data.meals.length && !data.photos.length;
+
+    if (isEmpty) {
+      content.innerHTML = "<p class='hint'>В этот день нет записей</p>";
+      return;
+    }
+
+    let html = "";
+
+    if (data.workouts.length) {
+      html += `<div class="day-section">
+        <h4>📝 Тренировки (${data.workouts.length})</h4>
+        <ul class="day-list">`;
+      data.workouts.forEach(w => {
+        const isCardioEx = isCardio(w.exercise);
+        const val = isCardioEx
+          ? `${w.weight} мин`
+          : `${w.weight}кг × ${w.reps} × ${w.sets}`;
+        html += `<li><strong>${w.exercise}</strong> — ${val}</li>`;
+      });
+      html += `</ul></div>`;
+    }
+
+    if (data.meals.length) {
+      const nt = data.nutrition_totals;
+      html += `<div class="day-section">
+        <h4>🍎 Питание</h4>
+        <div class="day-nutrition">
+          <strong>${nt.calories} ккал</strong>
+          · Б ${nt.protein} · Ж ${nt.fat} · У ${nt.carbs}
+        </div>
+        <ul class="day-list">`;
+      data.meals.forEach(m => {
+        html += `<li>${m.name} — ${m.grams} г (${Math.round(m.calories)} ккал)</li>`;
+      });
+      html += `</ul></div>`;
+    }
+
+    if (data.photos.length) {
+      html += `<div class="day-section">
+        <h4>📸 Фото (${data.photos.length})</h4>
+        <div class="day-photos">`;
+      data.photos.forEach(p => {
+        html += `
+          <div class="day-photo">
+            <img src="${API}${p.url}" alt="Фото" loading="lazy">
+            ${p.weight != null ? `<div class="day-photo-weight">${p.weight} кг</div>` : ""}
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+    }
+
+    content.innerHTML = html;
+  } catch (err) {
+    content.innerHTML = "<p class='hint'>Не удалось загрузить данные дня</p>";
+    console.error(err);
+  }
 }

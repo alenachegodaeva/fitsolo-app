@@ -135,6 +135,7 @@
       <button data-tab="log" class="tab">📝 Дневник</button>
       <button data-tab="stats" class="tab">📊 Прогресс</button>
       <button data-tab="nutrition" class="tab">🍎 Питание</button>
+      <button data-tab="calendar" class="tab">📅 Календарь</button>
     </div>
 
     <!-- ПЛАН -->
@@ -264,6 +265,26 @@
       </div>
       <div id="history-days"></div>
     </div>
+        <!-- КАЛЕНДАРЬ -->
+    <div id="tab-calendar" class="tab-content">
+      <div class="calendar-header">
+        <button id="cal-prev" class="btn-secondary" type="button" title="Предыдущий месяц">‹</button>
+        <h3 id="cal-title">Месяц</h3>
+        <button id="cal-next" class="btn-secondary" type="button" title="Следующий месяц">›</button>
+      </div>
+
+      <div class="calendar-legend">
+        <span><span class="cal-dot workout"></span> Тренировка</span>
+        <span><span class="cal-dot meal"></span> Питание</span>
+        <span><span class="cal-dot photo"></span> Фото</span>
+      </div>
+
+      <div class="calendar-weekdays">
+        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+      </div>
+
+      <div id="calendar-grid" class="calendar-grid"></div>
+    </div>
   </section>
 
   <div id="toast-container"></div>
@@ -339,7 +360,15 @@
 
     <div id="slider-thumbs" class="slider-thumbs"></div>
   </div>
-
+  <!-- Модалка деталей дня календаря -->
+  <div id="day-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:520px;">
+      <button id="day-modal-close" class="modal-close">✕</button>
+      <h3 id="day-modal-title">День</h3>
+      <div id="day-modal-content"></div>
+    </div>
+  </div>
+  
   <!-- Модалка редактирования профиля -->
   <div id="edit-profile-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card" style="max-width:520px;">
