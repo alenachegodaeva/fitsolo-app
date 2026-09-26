@@ -508,7 +508,152 @@ def get_exercises(q: str = "", limit: int = 200):
         exercises = [e for e in exercises if q_lower in e["name"].lower()]
 
     return exercises[:limit]
+# ===== ГРУППЫ МЫШЦ =====
 
+MUSCLE_LABELS = {
+    "chest":     ("Грудь",       False),
+    "back":      ("Спина",       False),
+    "shoulders": ("Плечи",       False),
+    "biceps":    ("Бицепс",      False),
+    "triceps":   ("Трицепс",     False),
+    "legs":      ("Ноги",        False),
+    "core":      ("Пресс / Кор", False),
+    "cardio":    ("Кардио",      True),
+}
+
+
+def load_exercises_raw() -> list:
+    """Читает exercises.json целиком."""
+    path = Path(__file__).parent / "exercises.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_exercise_muscle_map() -> dict:
+    """Возвращает {название упражнения: muscle_id}."""
+    return {e["name"]: e.get("muscle", "other") for e in load_exercises_raw()}
+
+
+@app.get("/api/muscle-groups/{user_id}")
+def get_muscle_groups(
+    user_id: int,
+    days: int = 30,
+    authorization: Optional[str] = Header(None),
+):
+    """Аналитика по группам мышц: тоннаж, %, статус, рекомендации."""
+    check_own(authorization, user_id)
+
+    db = SessionLocal()
+    cutoff = datetime.utcnow() - timedelta(days=days) if days > 0 else None
+    q = db.query(WorkoutLog).filter(WorkoutLog.user_id == user_id)
+    if cutoff:
+        q = q.filter(WorkoutLog.date >= cutoff)
+    logs = q.all()
+    db.close()
+
+    muscle_map = load_exercise_muscle_map()
+
+    groups = {}
+    total_tonnage_silovoy = 0.0
+
+    for log in logs:
+        muscle = muscle_map.get(log.exercise, "other")
+        if muscle not in MUSCLE_LABELS:
+            continue
+
+        is_cardio = MUSCLE_LABELS[muscle][1]
+
+        g = groups.setdefault(muscle, {
+            "exercises_count": 0,
+            "unique": set(),
+            "tonnage": 0.0,
+            "last_date": None,
+        })
+        g["exercises_count"] += 1
+        g["unique"].add(log.exercise)
+
+        if not is_cardio:
+            tonnage = (log.weight or 0) * (log.reps or 0) * (log.sets or 0)
+            g["tonnage"] += tonnage
+            total_tonnage_silovoy += tonnage
+
+        if log.date and (g["last_date"] is None or log.date > g["last_date"]):
+            g["last_date"] = log.date
+
+    silovye = [m for m, (_, is_c) in MUSCLE_LABELS.items() if not is_c]
+    n_silovykh = len(silovye)
+    avg_percent = round(100 / n_silovykh, 2) if n_silovykh else 0
+
+    result_groups = []
+    recommendations = []
+
+    for muscle_id, (label, is_cardio) in MUSCLE_LABELS.items():
+        g = groups.get(muscle_id)
+
+        if not g:
+            entry = {
+                "muscle_group": muscle_id,
+                "label": label,
+                "is_cardio": is_cardio,
+                "exercises_count": 0,
+                "unique_exercises": 0,
+                "tonnage": 0,
+                "last_date": None,
+                "percent": 0 if not is_cardio else None,
+                "status": "under" if not is_cardio else None,
+            }
+        else:
+            if is_cardio:
+                percent = None
+                status = None
+            else:
+                percent = (
+                    round(g["tonnage"] / total_tonnage_silovoy * 100, 2)
+                    if total_tonnage_silovoy > 0 else 0
+                )
+                if percent < avg_percent * 0.5:
+                    status = "under"
+                elif percent > avg_percent * 1.8:
+                    status = "over"
+                else:
+                    status = "norm"
+
+            entry = {
+                "muscle_group": muscle_id,
+                "label": label,
+                "is_cardio": is_cardio,
+                "exercises_count": g["exercises_count"],
+                "unique_exercises": len(g["unique"]),
+                "tonnage": round(g["tonnage"], 1),
+                "last_date": g["last_date"].date().isoformat() if g["last_date"] else None,
+                "percent": percent,
+                "status": status,
+            }
+
+        result_groups.append(entry)
+
+        if entry["status"] == "under":
+            all_ex = [e for e in load_exercises_raw() if e.get("muscle") == muscle_id]
+            all_ex.sort(
+                key=lambda e: {"beginner": 0, "intermediate": 1, "advanced": 2}
+                .get(e.get("difficulty"), 1)
+            )
+            top3 = [e["name"] for e in all_ex[:3]]
+            recommendations.append({
+                "muscle_group": muscle_id,
+                "label": label,
+                "text": f"{label} отстаёт: {entry['percent']}% объёма против {avg_percent}% в среднем",
+                "exercises": top3,
+            })
+
+    result_groups.sort(key=lambda x: (x["is_cardio"], -(x["percent"] or 0)))
+
+    return {
+        "period_days": days,
+        "total_tonnage": round(total_tonnage_silovoy, 1),
+        "avg_percent": avg_percent,
+        "groups": result_groups,
+        "recommendations": recommendations,
+    }
 
 # ===== АВТОРИЗАЦИЯ =====
 
@@ -903,7 +1048,7 @@ def get_achievement_dates(user_id: int, authorization: Optional[str] = Header(No
         by_day[key].append(r.achievement_id)
 
     return by_day
-    
+
     # ===== КАЛЕНДАРЬ ТРЕНИРОВОК =====
 
 @app.get("/api/calendar/{user_id}")

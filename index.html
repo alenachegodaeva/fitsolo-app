@@ -219,7 +219,30 @@
           Пока нет фото. Нажми «+ Добавить», чтобы начать отслеживать прогресс 📸
         </div>
       </div>
+      <!-- 💪 АНАЛИТИКА ПО ГРУППАМ МЫШЦ -->
+      <div id="muscles-block" style="margin-top:28px;">
+        <div class="muscles-header">
+          <h3>💪 Группы мышц</h3>
+          <div class="muscles-period" id="muscles-period">
+            <button class="btn-secondary" data-days="7" type="button">7д</button>
+            <button class="btn-secondary active" data-days="30" type="button">30д</button>
+            <button class="btn-secondary" data-days="90" type="button">90д</button>
+          </div>
+        </div>
 
+        <div id="muscles-chart-wrap" class="chart-wrapper" style="height:280px; margin-bottom:12px;">
+          <canvas id="muscles-chart"></canvas>
+        </div>
+
+        <div class="muscles-toggle">
+          <button class="btn-secondary active" data-mode="silovye" type="button">Силовые</button>
+          <button class="btn-secondary" data-mode="all" type="button">Всё</button>
+        </div>
+
+        <div id="muscles-list"></div>
+
+        <div id="muscles-recommendations"></div>
+      </div>
       <div id="stats-content" style="margin-top:28px;">
         <p class="hint">Добавь записи в дневник, чтобы увидеть статистику 📈</p>
       </div>
@@ -267,10 +290,14 @@
     </div>
         <!-- КАЛЕНДАРЬ -->
     <div id="tab-calendar" class="tab-content">
-      <div class="calendar-header">
+            <div class="calendar-header">
         <button id="cal-prev" class="btn-secondary" type="button" title="Предыдущий месяц">‹</button>
         <h3 id="cal-title">Месяц</h3>
         <button id="cal-next" class="btn-secondary" type="button" title="Следующий месяц">›</button>
+      </div>
+
+      <div class="calendar-subheader">
+        <button id="cal-today" class="btn-secondary" type="button">📍 Сегодня</button>
       </div>
 
       <div class="calendar-legend">
@@ -368,7 +395,7 @@
       <div id="day-modal-content"></div>
     </div>
   </div>
-  
+
   <!-- Модалка редактирования профиля -->
   <div id="edit-profile-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card" style="max-width:520px;">

@@ -1,87 +1,848 @@
 [
-  {"name": "Жим штанги лёжа", "muscle": "chest", "equipment": ["barbell", "bench"], "difficulty": "beginner", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=жим+штанги+лежа+техника", "description": "Базовое упражнение для груди. Лёжа на скамье, хват чуть шире плеч."},
-  {"name": "Жим гантелей лёжа", "muscle": "chest", "equipment": ["dumbbells", "bench"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=жим+гантелей+лежа", "description": "Большая амплитуда, чем со штангой. Хорошо для проработки груди."},
-  {"name": "Жим лёжа на наклонной", "muscle": "chest", "equipment": ["barbell", "bench"], "difficulty": "intermediate", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=жим+лежа+наклонная", "description": "Акцент на верхнюю часть груди."},
-  {"name": "Отжимания на брусьях", "muscle": "chest", "equipment": ["bodyweight"], "difficulty": "intermediate", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=отжимания+на+брусьях", "description": "Отличное упражнение для низа груди и трицепса."},
-  {"name": "Разводка гантелей", "muscle": "chest", "equipment": ["dumbbells", "bench"], "difficulty": "beginner", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=разводка+гантелей", "description": "Изолирующее упражнение для растяжки груди."},
-  {"name": "Жим в тренажёре", "muscle": "chest", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=жим+в+тренажере+грудь", "description": "Безопасный вариант для новичков."},
-  {"name": "Кроссовер на блоках", "muscle": "chest", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=кроссовер+блоки", "description": "Финальная прокачка груди."},
-
-  {"name": "Становая тяга", "muscle": "back", "equipment": ["barbell"], "difficulty": "advanced", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=становая+тяга+техника", "description": "Лучшее базовое упражнение. Требует идеальной техники."},
-  {"name": "Тяга штанги в наклоне", "muscle": "back", "equipment": ["barbell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=тяга+штанги+в+наклоне", "description": "Проработка широчайших мышц спины."},
-  {"name": "Подтягивания", "muscle": "back", "equipment": ["bodyweight"], "difficulty": "intermediate", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=подтягивания+техника", "description": "Лучшее упражнение с собственным весом."},
-  {"name": "Тяга верхнего блока", "muscle": "back", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=тяга+верхнего+блока", "description": "Альтернатива подтягиваниям."},
-  {"name": "Тяга гантели одной рукой", "muscle": "back", "equipment": ["dumbbells", "bench"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=тяга+гантели+одной+рукой", "description": "Хорошо прорабатывает каждую сторону отдельно."},
-  {"name": "Горизонтальная тяга блока", "muscle": "back", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=тяга+нижнего+блока", "description": "Толщина спины."},
-  {"name": "Шраги с гантелями", "muscle": "back", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=шраги+с+гантелями", "description": "Трапеции."},
-
-  {"name": "Приседания со штангой", "muscle": "legs", "equipment": ["barbell"], "difficulty": "intermediate", "contra": ["knees", "lower_back"], "video": "https://www.youtube.com/results?search_query=приседания+со+штангой", "description": "Король упражнений для ног."},
-  {"name": "Жим ногами", "muscle": "legs", "equipment": ["machines"], "difficulty": "beginner", "contra": ["knees"], "video": "https://www.youtube.com/results?search_query=жим+ногами", "description": "Безопасная альтернатива приседаниям."},
-  {"name": "Выпады с гантелями", "muscle": "legs", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": ["knees"], "video": "https://www.youtube.com/results?search_query=выпады+с+гантелями", "description": "Развивает баланс и силу ног."},
-  {"name": "Румынская тяга", "muscle": "legs", "equipment": ["barbell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=румынская+тяга", "description": "Задняя поверхность бедра и ягодицы."},
-  {"name": "Разгибания ног в тренажёре", "muscle": "legs", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=разгибания+ног", "description": "Изоляция квадрицепсов."},
-  {"name": "Сгибания ног в тренажёре", "muscle": "legs", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=сгибания+ног", "description": "Изоляция бицепса бедра."},
-  {"name": "Подъём на носки стоя", "muscle": "legs", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=подъем+на+носки", "description": "Икры."},
-  {"name": "Болгарский выпад", "muscle": "legs", "equipment": ["dumbbells", "bench"], "difficulty": "intermediate", "contra": ["knees"], "video": "https://www.youtube.com/results?search_query=болгарский+выпад", "description": "Одно из лучших упражнений для ягодиц и ног."},
-
-  {"name": "Жим штанги стоя", "muscle": "shoulders", "equipment": ["barbell"], "difficulty": "intermediate", "contra": ["shoulder", "lower_back"], "video": "https://www.youtube.com/results?search_query=жим+штанги+стоя", "description": "Базовое упражнение для плеч."},
-  {"name": "Жим гантелей сидя", "muscle": "shoulders", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=жим+гантелей+сидя", "description": "Безопасная альтернатива жиму стоя."},
-  {"name": "Махи гантелями в стороны", "muscle": "shoulders", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=махи+гантелями+в+стороны", "description": "Средний пучок дельт."},
-  {"name": "Махи в наклоне", "muscle": "shoulders", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=махи+в+наклоне", "description": "Задний пучок дельт."},
-  {"name": "Обратные разводки в тренажёре", "muscle": "shoulders", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=обратные+разводки", "description": "Задние дельты."},
-
-  {"name": "Подъём штанги на бицепс", "muscle": "biceps", "equipment": ["barbell"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=подъем+штанги+на+бицепс", "description": "Классика для бицепса."},
-  {"name": "Сгибания с гантелями", "muscle": "biceps", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=сгибания+с+гантелями", "description": "С супинацией — лучше для формы бицепса."},
-  {"name": "Молотки", "muscle": "biceps", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=молотки+бицепс", "description": "Брахиалис и бицепс."},
-  {"name": "Сгибания на скамье Скотта", "muscle": "biceps", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=скамья+скотта", "description": "Изолирует бицепс."},
-
-  {"name": "Французский жим", "muscle": "triceps", "equipment": ["barbell"], "difficulty": "intermediate", "contra": [], "video": "https://www.youtube.com/results?search_query=французский+жим", "description": "Классика для трицепса."},
-  {"name": "Разгибания на блоке", "muscle": "triceps", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=разгибания+на+блоке", "description": "Изоляция трицепса."},
-  {"name": "Отжимания узким хватом", "muscle": "triceps", "equipment": ["bodyweight"], "difficulty": "beginner", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=отжимания+узким+хватом", "description": "С собственным весом."},
-  {"name": "Разгибания гантели из-за головы", "muscle": "triceps", "equipment": ["dumbbells"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=разгибания+гантели+из-за+головы", "description": "Растягивает трицепс."},
-
-  {"name": "Планка", "muscle": "core", "equipment": ["bodyweight"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=планка+техника", "description": "Статическое упражнение на пресс."},
-  {"name": "Скручивания", "muscle": "core", "equipment": ["bodyweight"], "difficulty": "beginner", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=скручивания", "description": "Верхний пресс."},
-  {"name": "Подъём ног в висе", "muscle": "core", "equipment": ["bodyweight"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=подъем+ног+в+висе", "description": "Нижний пресс."},
-  {"name": "Русский твист", "muscle": "core", "equipment": ["bodyweight"], "difficulty": "beginner", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=русский+твист", "description": "Косые мышцы живота."},
-  {"name": "Велосипед", "muscle": "core", "equipment": ["bodyweight"], "difficulty": "beginner", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=упражнение+велосипед", "description": "Пресс + косые."},
-  {"name": "Гиперэкстензия", "muscle": "core", "equipment": ["machines"], "difficulty": "beginner", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=гиперэкстензия", "description": "Разгибатели спины."},
-
-  {"name": "Бег на дорожке", "muscle": "cardio", "equipment": ["machines"], "difficulty": "beginner", "contra": ["knees"], "video": "", "description": "Кардио для разогрева и жиросжигания. 10-20 минут."},
-  {"name": "Гребной тренажёр", "muscle": "cardio", "equipment": ["machines"], "difficulty": "beginner", "contra": ["lower_back"], "video": "", "description": "Кардио на всё тело."},
-  {"name": "Велотренажёр", "muscle": "cardio", "equipment": ["machines"], "difficulty": "beginner", "contra": [], "video": "", "description": "Щадящее кардио для коленей."},
-  {"name": "Скакалка", "muscle": "cardio", "equipment": ["bodyweight"], "difficulty": "beginner", "contra": ["knees"], "video": "", "description": "Эффективное кардио, 5-10 минут."},
-    {"name": "Жим гири одной рукой стоя", "muscle": "shoulders", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["shoulder", "lower_back"], "video": "https://www.youtube.com/results?search_query=жим+гири+одной+рукой", "description": "Развивает плечи и стабильность. Гиря сбоку, жим над головой."},
-  {"name": "Мах гирей двумя руками", "muscle": "back", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=мах+гирей+двумя+руками", "description": "Классика кроссфита. Работают спина, ноги, плечи."},
-  {"name": "Гоблет-приседания с гирей", "muscle": "legs", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": ["knees"], "video": "https://www.youtube.com/results?search_query=гоблет+приседания", "description": "Гиря у груди, приседаешь. Учит правильной технике."},
-  {"name": "Русский твист с гирей", "muscle": "core", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=русский+твист+с+гирей", "description": "Косые мышцы живота с нагрузкой."},
-    {"name": "Жим гири одной рукой стоя", "muscle": "shoulders", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["shoulder", "lower_back"], "video": "https://www.youtube.com/results?search_query=жим+гири+одной+рукой", "description": "Развивает плечи и стабильность. Гиря сбоку, жим над головой."},
-  {"name": "Мах гирей двумя руками", "muscle": "shoulders", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=мах+гирей+двумя+руками", "description": "Классика кроссфита. Работают плечи, спина, ноги."},
-  {"name": "Рывок гири одной рукой", "muscle": "shoulders", "equipment": ["kettlebell"], "difficulty": "advanced", "contra": ["shoulder", "lower_back"], "video": "https://www.youtube.com/results?search_query=рывок+гири", "description": "Взрывное упражнение. Требует техники и силы."},
-  {"name": "Толчок гири по длинному циклу", "muscle": "shoulders", "equipment": ["kettlebell"], "difficulty": "advanced", "contra": ["shoulder", "lower_back"], "video": "https://www.youtube.com/results?search_query=толчок+гири+длинный+цикл", "description": "Комплексное упражнение на всё тело."},
-  {"name": "Жим гирь сидя", "muscle": "shoulders", "equipment": ["kettlebell", "bench"], "difficulty": "intermediate", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=жим+гирь+сидя", "description": "Две гири, сидя на скамье. Хорошо грузит дельты."},
-
-  {"name": "Гоблет-приседания с гирей", "muscle": "legs", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": ["knees"], "video": "https://www.youtube.com/results?search_query=гоблет+приседания", "description": "Гиря у груди. Учит правильной технике приседа."},
-  {"name": "Румынская тяга с гирей", "muscle": "legs", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=румынская+тяга+гиря", "description": "Задняя поверхность бедра и ягодицы."},
-  {"name": "Болгарский выпад с гирей", "muscle": "legs", "equipment": ["kettlebell", "bench"], "difficulty": "intermediate", "contra": ["knees"], "video": "https://www.youtube.com/results?search_query=болгарский+выпад+с+гирей", "description": "Одно из лучших упражнений на ягодицы."},
-  {"name": "Становая тяга с гирей сумо", "muscle": "legs", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=становая+тяга+сумо+гиря", "description": "Широкая постановка ног, акцент на ягодицы и бёдра."},
-  {"name": "Выпады с гирей в руках", "muscle": "legs", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": ["knees"], "video": "https://www.youtube.com/results?search_query=выпады+с+гирей", "description": "Классические выпады с гирями в опущенных руках."},
-
-  {"name": "Свинг гирей двумя руками", "muscle": "back", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=свинг+гирей+техника", "description": "Классический мах. Мощно включает заднюю цепь."},
-  {"name": "Тяга гири в наклоне", "muscle": "back", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=тяга+гири+в+наклоне", "description": "Проработка широчайших. Можно одной рукой."},
-  {"name": "Тяга гири одной рукой в планке", "muscle": "back", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": [], "video": "https://www.youtube.com/results?search_query=тяга+гири+в+планке", "description": "Тянешь гирю к поясу, стоя в планке. Работает спина и кор."},
-  {"name": "Тяга двух гирь в наклоне", "muscle": "back", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=тяга+двух+гирь", "description": "Две гири одновременно. Хорошо грузит середину спины."},
-
-  {"name": "Жим гирь лёжа", "muscle": "chest", "equipment": ["kettlebell", "bench"], "difficulty": "intermediate", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=жим+гирь+лежа", "description": "Аналог жима гантелей, но с гирями."},
-  {"name": "Отжимания с гирями (руки на гирях)", "muscle": "chest", "equipment": ["kettlebell", "bodyweight"], "difficulty": "intermediate", "contra": ["shoulder"], "video": "https://www.youtube.com/results?search_query=отжимания+на+гирях", "description": "Усложнённые отжимания на нестабильной опоре."},
-
-  {"name": "Сгибания рук с гирей", "muscle": "biceps", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=сгибания+рук+с+гирей", "description": "Классика на бицепс. Гиря сильнее смещает нагрузку."},
-  {"name": "Молотковые сгибания с гирями", "muscle": "biceps", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=молотковые+сгибания+гиря", "description": "Нейтральный хват, работает брахиалис."},
-
-  {"name": "Разгибания гири из-за головы", "muscle": "triceps", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": [], "video": "https://www.youtube.com/results?search_query=разгибания+гири+из-за+головы", "description": "Растягивает и нагружает трицепс."},
-  {"name": "Французский жим с гирями лёжа", "muscle": "triceps", "equipment": ["kettlebell", "bench"], "difficulty": "intermediate", "contra": [], "video": "https://www.youtube.com/results?search_query=французский+жим+гиря", "description": "Изолирует трицепс, лёжа на скамье."},
-
-  {"name": "Русский твист с гирей", "muscle": "core", "equipment": ["kettlebell"], "difficulty": "intermediate", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=русский+твист+с+гирей", "description": "Косые мышцы живота с дополнительной нагрузкой."},
-  {"name": "Подъём гири над головой из планки", "muscle": "core", "equipment": ["kettlebell"], "difficulty": "advanced", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=планка+с+подъемом+гири", "description": "Планка + жим одной рукой. Работает весь кор."},
-  {"name": "Наклоны в сторону с гирей", "muscle": "core", "equipment": ["kettlebell"], "difficulty": "beginner", "contra": ["lower_back"], "video": "https://www.youtube.com/results?search_query=наклоны+в+сторону+с+гирей", "description": "Косые мышцы живота."}
+  {
+    "name": "Жим штанги лёжа",
+    "muscle": "chest",
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+штанги+лежа+техника",
+    "description": "Базовое упражнение для груди. Лёжа на скамье, хват чуть шире плеч."
+  },
+  {
+    "name": "Жим гантелей лёжа",
+    "muscle": "chest",
+    "equipment": [
+      "dumbbells",
+      "bench"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=жим+гантелей+лежа",
+    "description": "Большая амплитуда, чем со штангой. Хорошо для проработки груди."
+  },
+  {
+    "name": "Жим лёжа на наклонной",
+    "muscle": "chest",
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+лежа+наклонная",
+    "description": "Акцент на верхнюю часть груди."
+  },
+  {
+    "name": "Отжимания на брусьях",
+    "muscle": "chest",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=отжимания+на+брусьях",
+    "description": "Отличное упражнение для низа груди и трицепса."
+  },
+  {
+    "name": "Разводка гантелей",
+    "muscle": "chest",
+    "equipment": [
+      "dumbbells",
+      "bench"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=разводка+гантелей",
+    "description": "Изолирующее упражнение для растяжки груди."
+  },
+  {
+    "name": "Жим в тренажёре",
+    "muscle": "chest",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=жим+в+тренажере+грудь",
+    "description": "Безопасный вариант для новичков."
+  },
+  {
+    "name": "Кроссовер на блоках",
+    "muscle": "chest",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=кроссовер+блоки",
+    "description": "Финальная прокачка груди."
+  },
+  {
+    "name": "Становая тяга",
+    "muscle": "back",
+    "equipment": [
+      "barbell"
+    ],
+    "difficulty": "advanced",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=становая+тяга+техника",
+    "description": "Лучшее базовое упражнение. Требует идеальной техники."
+  },
+  {
+    "name": "Тяга штанги в наклоне",
+    "muscle": "back",
+    "equipment": [
+      "barbell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=тяга+штанги+в+наклоне",
+    "description": "Проработка широчайших мышц спины."
+  },
+  {
+    "name": "Подтягивания",
+    "muscle": "back",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=подтягивания+техника",
+    "description": "Лучшее упражнение с собственным весом."
+  },
+  {
+    "name": "Тяга верхнего блока",
+    "muscle": "back",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=тяга+верхнего+блока",
+    "description": "Альтернатива подтягиваниям."
+  },
+  {
+    "name": "Тяга гантели одной рукой",
+    "muscle": "back",
+    "equipment": [
+      "dumbbells",
+      "bench"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=тяга+гантели+одной+рукой",
+    "description": "Хорошо прорабатывает каждую сторону отдельно."
+  },
+  {
+    "name": "Горизонтальная тяга блока",
+    "muscle": "back",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=тяга+нижнего+блока",
+    "description": "Толщина спины."
+  },
+  {
+    "name": "Шраги с гантелями",
+    "muscle": "back",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=шраги+с+гантелями",
+    "description": "Трапеции."
+  },
+  {
+    "name": "Приседания со штангой",
+    "muscle": "legs",
+    "equipment": [
+      "barbell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "knees",
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=приседания+со+штангой",
+    "description": "Король упражнений для ног."
+  },
+  {
+    "name": "Жим ногами",
+    "muscle": "legs",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "knees"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+ногами",
+    "description": "Безопасная альтернатива приседаниям."
+  },
+  {
+    "name": "Выпады с гантелями",
+    "muscle": "legs",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "knees"
+    ],
+    "video": "https://www.youtube.com/results?search_query=выпады+с+гантелями",
+    "description": "Развивает баланс и силу ног."
+  },
+  {
+    "name": "Румынская тяга",
+    "muscle": "legs",
+    "equipment": [
+      "barbell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=румынская+тяга",
+    "description": "Задняя поверхность бедра и ягодицы."
+  },
+  {
+    "name": "Разгибания ног в тренажёре",
+    "muscle": "legs",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=разгибания+ног",
+    "description": "Изоляция квадрицепсов."
+  },
+  {
+    "name": "Сгибания ног в тренажёре",
+    "muscle": "legs",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=сгибания+ног",
+    "description": "Изоляция бицепса бедра."
+  },
+  {
+    "name": "Подъём на носки стоя",
+    "muscle": "legs",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=подъем+на+носки",
+    "description": "Икры."
+  },
+  {
+    "name": "Болгарский выпад",
+    "muscle": "legs",
+    "equipment": [
+      "dumbbells",
+      "bench"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "knees"
+    ],
+    "video": "https://www.youtube.com/results?search_query=болгарский+выпад",
+    "description": "Одно из лучших упражнений для ягодиц и ног."
+  },
+  {
+    "name": "Жим штанги стоя",
+    "muscle": "shoulders",
+    "equipment": [
+      "barbell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder",
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+штанги+стоя",
+    "description": "Базовое упражнение для плеч."
+  },
+  {
+    "name": "Жим гантелей сидя",
+    "muscle": "shoulders",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+гантелей+сидя",
+    "description": "Безопасная альтернатива жиму стоя."
+  },
+  {
+    "name": "Махи гантелями в стороны",
+    "muscle": "shoulders",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=махи+гантелями+в+стороны",
+    "description": "Средний пучок дельт."
+  },
+  {
+    "name": "Махи в наклоне",
+    "muscle": "shoulders",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=махи+в+наклоне",
+    "description": "Задний пучок дельт."
+  },
+  {
+    "name": "Обратные разводки в тренажёре",
+    "muscle": "shoulders",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=обратные+разводки",
+    "description": "Задние дельты."
+  },
+  {
+    "name": "Подъём штанги на бицепс",
+    "muscle": "biceps",
+    "equipment": [
+      "barbell"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=подъем+штанги+на+бицепс",
+    "description": "Классика для бицепса."
+  },
+  {
+    "name": "Сгибания с гантелями",
+    "muscle": "biceps",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=сгибания+с+гантелями",
+    "description": "С супинацией — лучше для формы бицепса."
+  },
+  {
+    "name": "Молотки",
+    "muscle": "biceps",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=молотки+бицепс",
+    "description": "Брахиалис и бицепс."
+  },
+  {
+    "name": "Сгибания на скамье Скотта",
+    "muscle": "biceps",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=скамья+скотта",
+    "description": "Изолирует бицепс."
+  },
+  {
+    "name": "Французский жим",
+    "muscle": "triceps",
+    "equipment": [
+      "barbell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=французский+жим",
+    "description": "Классика для трицепса."
+  },
+  {
+    "name": "Разгибания на блоке",
+    "muscle": "triceps",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=разгибания+на+блоке",
+    "description": "Изоляция трицепса."
+  },
+  {
+    "name": "Отжимания узким хватом",
+    "muscle": "triceps",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=отжимания+узким+хватом",
+    "description": "С собственным весом."
+  },
+  {
+    "name": "Разгибания гантели из-за головы",
+    "muscle": "triceps",
+    "equipment": [
+      "dumbbells"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=разгибания+гантели+из-за+головы",
+    "description": "Растягивает трицепс."
+  },
+  {
+    "name": "Планка",
+    "muscle": "core",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=планка+техника",
+    "description": "Статическое упражнение на пресс."
+  },
+  {
+    "name": "Скручивания",
+    "muscle": "core",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=скручивания",
+    "description": "Верхний пресс."
+  },
+  {
+    "name": "Подъём ног в висе",
+    "muscle": "core",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=подъем+ног+в+висе",
+    "description": "Нижний пресс."
+  },
+  {
+    "name": "Русский твист",
+    "muscle": "core",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=русский+твист",
+    "description": "Косые мышцы живота."
+  },
+  {
+    "name": "Велосипед",
+    "muscle": "core",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=упражнение+велосипед",
+    "description": "Пресс + косые."
+  },
+  {
+    "name": "Гиперэкстензия",
+    "muscle": "core",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=гиперэкстензия",
+    "description": "Разгибатели спины."
+  },
+  {
+    "name": "Бег на дорожке",
+    "muscle": "cardio",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "knees"
+    ],
+    "video": "",
+    "description": "Кардио для разогрева и жиросжигания. 10-20 минут."
+  },
+  {
+    "name": "Гребной тренажёр",
+    "muscle": "cardio",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "",
+    "description": "Кардио на всё тело."
+  },
+  {
+    "name": "Велотренажёр",
+    "muscle": "cardio",
+    "equipment": [
+      "machines"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "",
+    "description": "Щадящее кардио для коленей."
+  },
+  {
+    "name": "Скакалка",
+    "muscle": "cardio",
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "knees"
+    ],
+    "video": "",
+    "description": "Эффективное кардио, 5-10 минут."
+  },
+  {
+    "name": "Жим гири одной рукой стоя",
+    "muscle": "shoulders",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder",
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+гири+одной+рукой",
+    "description": "Развивает плечи и стабильность. Гиря сбоку, жим над головой."
+  },
+  {
+    "name": "Мах гирей двумя руками",
+    "muscle": "back",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=мах+гирей+двумя+руками",
+    "description": "Классика кроссфита. Работают спина, ноги, плечи."
+  },
+  {
+    "name": "Гоблет-приседания с гирей",
+    "muscle": "legs",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "knees"
+    ],
+    "video": "https://www.youtube.com/results?search_query=гоблет+приседания",
+    "description": "Гиря у груди, приседаешь. Учит правильной технике."
+  },
+  {
+    "name": "Русский твист с гирей",
+    "muscle": "core",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=русский+твист+с+гирей",
+    "description": "Косые мышцы живота с нагрузкой."
+  },
+  {
+    "name": "Рывок гири одной рукой",
+    "muscle": "shoulders",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "advanced",
+    "contra": [
+      "shoulder",
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=рывок+гири",
+    "description": "Взрывное упражнение. Требует техники и силы."
+  },
+  {
+    "name": "Толчок гири по длинному циклу",
+    "muscle": "shoulders",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "advanced",
+    "contra": [
+      "shoulder",
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=толчок+гири+длинный+цикл",
+    "description": "Комплексное упражнение на всё тело."
+  },
+  {
+    "name": "Жим гирь сидя",
+    "muscle": "shoulders",
+    "equipment": [
+      "kettlebell",
+      "bench"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+гирь+сидя",
+    "description": "Две гири, сидя на скамье. Хорошо грузит дельты."
+  },
+  {
+    "name": "Румынская тяга с гирей",
+    "muscle": "legs",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=румынская+тяга+гиря",
+    "description": "Задняя поверхность бедра и ягодицы."
+  },
+  {
+    "name": "Болгарский выпад с гирей",
+    "muscle": "legs",
+    "equipment": [
+      "kettlebell",
+      "bench"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "knees"
+    ],
+    "video": "https://www.youtube.com/results?search_query=болгарский+выпад+с+гирей",
+    "description": "Одно из лучших упражнений на ягодицы."
+  },
+  {
+    "name": "Становая тяга с гирей сумо",
+    "muscle": "legs",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=становая+тяга+сумо+гиря",
+    "description": "Широкая постановка ног, акцент на ягодицы и бёдра."
+  },
+  {
+    "name": "Выпады с гирей в руках",
+    "muscle": "legs",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "knees"
+    ],
+    "video": "https://www.youtube.com/results?search_query=выпады+с+гирей",
+    "description": "Классические выпады с гирями в опущенных руках."
+  },
+  {
+    "name": "Свинг гирей двумя руками",
+    "muscle": "back",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=свинг+гирей+техника",
+    "description": "Классический мах. Мощно включает заднюю цепь."
+  },
+  {
+    "name": "Тяга гири в наклоне",
+    "muscle": "back",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=тяга+гири+в+наклоне",
+    "description": "Проработка широчайших. Можно одной рукой."
+  },
+  {
+    "name": "Тяга гири одной рукой в планке",
+    "muscle": "back",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=тяга+гири+в+планке",
+    "description": "Тянешь гирю к поясу, стоя в планке. Работает спина и кор."
+  },
+  {
+    "name": "Тяга двух гирь в наклоне",
+    "muscle": "back",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=тяга+двух+гирь",
+    "description": "Две гири одновременно. Хорошо грузит середину спины."
+  },
+  {
+    "name": "Жим гирь лёжа",
+    "muscle": "chest",
+    "equipment": [
+      "kettlebell",
+      "bench"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=жим+гирь+лежа",
+    "description": "Аналог жима гантелей, но с гирями."
+  },
+  {
+    "name": "Отжимания с гирями (руки на гирях)",
+    "muscle": "chest",
+    "equipment": [
+      "kettlebell",
+      "bodyweight"
+    ],
+    "difficulty": "intermediate",
+    "contra": [
+      "shoulder"
+    ],
+    "video": "https://www.youtube.com/results?search_query=отжимания+на+гирях",
+    "description": "Усложнённые отжимания на нестабильной опоре."
+  },
+  {
+    "name": "Сгибания рук с гирей",
+    "muscle": "biceps",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=сгибания+рук+с+гирей",
+    "description": "Классика на бицепс. Гиря сильнее смещает нагрузку."
+  },
+  {
+    "name": "Молотковые сгибания с гирями",
+    "muscle": "biceps",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=молотковые+сгибания+гиря",
+    "description": "Нейтральный хват, работает брахиалис."
+  },
+  {
+    "name": "Разгибания гири из-за головы",
+    "muscle": "triceps",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=разгибания+гири+из-за+головы",
+    "description": "Растягивает и нагружает трицепс."
+  },
+  {
+    "name": "Французский жим с гирями лёжа",
+    "muscle": "triceps",
+    "equipment": [
+      "kettlebell",
+      "bench"
+    ],
+    "difficulty": "intermediate",
+    "contra": [],
+    "video": "https://www.youtube.com/results?search_query=французский+жим+гиря",
+    "description": "Изолирует трицепс, лёжа на скамье."
+  },
+  {
+    "name": "Подъём гири над головой из планки",
+    "muscle": "core",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "advanced",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=планка+с+подъемом+гири",
+    "description": "Планка + жим одной рукой. Работает весь кор."
+  },
+  {
+    "name": "Наклоны в сторону с гирей",
+    "muscle": "core",
+    "equipment": [
+      "kettlebell"
+    ],
+    "difficulty": "beginner",
+    "contra": [
+      "lower_back"
+    ],
+    "video": "https://www.youtube.com/results?search_query=наклоны+в+сторону+с+гирей",
+    "description": "Косые мышцы живота."
+  }
 ]

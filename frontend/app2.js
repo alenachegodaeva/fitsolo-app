@@ -283,7 +283,7 @@ document.querySelectorAll(".tab[data-tab]").forEach(t => {
     document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
-    if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); loadPhotos(); }
+    if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); loadPhotos(); loadMuscles()}
     if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); }
     if (t.dataset.tab === "log") buildExercisePicker();
     if (t.dataset.tab === "calendar") { initCalendar(); }
@@ -688,7 +688,199 @@ function setupExerciseAutocomplete() {
     }
   });
 }
+// ===== ГРУППЫ МЫШЦ =====
+let musclesCache = null;
+let musclesDays = 30;
+let musclesMode = "silovye";  // "silovye" | "all"
+let musclesChart = null;
 
+async function loadMuscles(days = musclesDays) {
+  musclesDays = days;
+  if (!userId) return;
+  try {
+    const res = await apiFetch(`/api/muscle-groups/${userId}?days=${days}`);
+    if (!res.ok) throw new Error("muscle-groups fetch failed");
+    musclesCache = await res.json();
+    renderMuscles();
+  } catch (err) {
+    console.warn("Не удалось загрузить группы мышц:", err);
+  }
+}
+
+function renderMuscles() {
+  if (!musclesCache) return;
+
+  const groups = musclesCache.groups || [];
+
+  // Фильтр для диаграммы
+  const visible = musclesMode === "silovye"
+    ? groups.filter(g => !g.is_cardio)
+    : groups.filter(g => g.exercises_count > 0);
+
+  // ===== Диаграмма =====
+  const ctx = document.getElementById("muscles-chart");
+  if (!ctx) return;
+
+  if (musclesChart) {
+    musclesChart.destroy();
+    musclesChart = null;
+  }
+
+  const colors = [
+    "#7fb89a", "#e8a87c", "#c38d9e", "#85cdca",
+    "#e27d60", "#b8b8ff", "#ffd97d", "#a0c4ff", "#9bc4a8",
+  ];
+
+  // Если нет данных — рисуем серый круг с подсказкой
+  const hasData = visible.some(g => (g.tonnage || 0) > 0);
+  if (!hasData) {
+    musclesChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: ["Нет данных"],
+        datasets: [{
+          data: [1],
+          backgroundColor: ["#3a3d44"],
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "65%",
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false },
+        },
+      },
+    });
+  } else {
+    musclesChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: visible.map(g => g.label),
+        datasets: [{
+          data: visible.map(g => g.tonnage || 0),
+          backgroundColor: colors.slice(0, visible.length),
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "65%",
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              color: getComputedStyle(document.documentElement)
+                .getPropertyValue("--text").trim() || "#e8eaed",
+              font: { size: 11 },
+              boxWidth: 10,
+              boxHeight: 10,
+              padding: 8,
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: (c) => {
+                const g = visible[c.dataIndex];
+                const pct = g.percent != null ? `${g.percent}%` : "—";
+                return `${g.label}: ${g.tonnage || 0} кг (${pct})`;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // ===== Список с прогресс-барами =====
+  const listEl = document.getElementById("muscles-list");
+  if (!listEl) return;
+
+  const visibleForList = musclesMode === "silovye"
+    ? groups.filter(g => !g.is_cardio)
+    : groups;
+
+  const maxTonnage = Math.max(
+    ...visibleForList.map(g => g.tonnage || 0),
+    1
+  );
+
+  const statusLabels = {
+    under: { text: "⚠️ отстаёт", cls: "under" },
+    norm:  { text: "✓ норм",     cls: "norm" },
+    over:  { text: "🔥 перекачано", cls: "over" },
+  };
+
+  listEl.innerHTML = visibleForList.map(g => {
+    const tonnage = g.tonnage || 0;
+    const width = (tonnage / maxTonnage) * 100;
+    const st = g.status ? statusLabels[g.status] : null;
+    const percent = g.percent != null ? `${g.percent}%` : "—";
+    const count = g.exercises_count || 0;
+
+    return `
+      <div class="muscle-row">
+        <div class="muscle-row-head">
+          <span class="muscle-name">${g.label}</span>
+          <span class="muscle-percent">${percent}</span>
+        </div>
+        <div class="muscle-bar-wrap">
+          <div class="muscle-bar-fill" style="width:${width}%"></div>
+        </div>
+        <div class="muscle-row-foot">
+          <span>${count} записей · ${tonnage} кг</span>
+          ${st ? `<span class="muscle-status ${st.cls}">${st.text}</span>` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // ===== Рекомендации =====
+  const recEl = document.getElementById("muscles-recommendations");
+  if (!recEl) return;
+
+  const recs = musclesCache.recommendations || [];
+  if (!recs.length) {
+    recEl.innerHTML = "";
+    return;
+  }
+
+  recEl.innerHTML = `
+    <div class="muscles-recs">
+      <h4>💡 Рекомендации</h4>
+      ${recs.map(r => `
+        <div class="muscle-rec">
+          <div class="muscle-rec-head">${r.text}</div>
+          <div class="muscle-rec-ex">${(r.exercises || []).join(" · ")}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+// Кнопки периода и режима
+document.addEventListener("click", (e) => {
+  const periodBtn = e.target.closest("#muscles-period .btn-secondary");
+  if (periodBtn) {
+    document.querySelectorAll("#muscles-period .btn-secondary")
+      .forEach(b => b.classList.remove("active"));
+    periodBtn.classList.add("active");
+    loadMuscles(+periodBtn.dataset.days);
+    return;
+  }
+
+  const modeBtn = e.target.closest(".muscles-toggle .btn-secondary");
+  if (modeBtn) {
+    document.querySelectorAll(".muscles-toggle .btn-secondary")
+      .forEach(b => b.classList.remove("active"));
+    modeBtn.classList.add("active");
+    musclesMode = modeBtn.dataset.mode;
+    renderMuscles();
+  }
+});
 // ===== СТАТИСТИКА =====
 async function loadStats() {
   const res = await apiFetch(`/api/stats/${userId}`);

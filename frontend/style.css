@@ -2020,3 +2020,189 @@ input[type="number"] {
     gap: 10px;
   }
 }
+/* Кнопка «Сегодня» под календарём */
+.calendar-subheader {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.calendar-subheader .btn-secondary {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+/* Звёздочка достижения в ячейке */
+.cal-star {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 10px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+}
+
+.cal-cell.has-achievement {
+  background: rgba(212, 180, 127, 0.1);
+}
+
+.cal-cell.has-achievement.has-activity {
+  background: rgba(127, 184, 154, 0.1);
+}
+
+/* Мобильная адаптация */
+@media (max-width: 500px) {
+  .cal-star {
+    font-size: 9px;
+    top: 1px;
+    right: 2px;
+  }
+  .calendar-subheader .btn-secondary {
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+}
+/* ============================================================
+   ===== ГРУППЫ МЫШЦ ==========================================
+   ============================================================ */
+
+.muscles-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.muscles-header h3 {
+  margin: 0;
+}
+
+.muscles-period {
+  display: flex;
+  gap: 4px;
+}
+.muscles-period .btn-secondary {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.muscles-period .btn-secondary.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.muscles-toggle {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 12px 0 16px;
+}
+.muscles-toggle .btn-secondary {
+  padding: 6px 16px;
+  font-size: 13px;
+}
+.muscles-toggle .btn-secondary.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+#muscles-chart-wrap {
+  position: relative;
+}
+
+#muscles-list {
+  margin-top: 8px;
+}
+
+.muscle-row {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--card);
+  border-radius: 12px;
+  transition: transform 0.15s ease;
+}
+.muscle-row:active {
+  transform: scale(0.99);
+}
+
+.muscle-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.muscle-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.muscle-percent {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.muscle-bar-wrap {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.muscle-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #a8d5bb);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+
+.muscle-row-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  gap: 8px;
+}
+
+.muscle-status {
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.muscle-status.under { color: #e8a87c; }
+.muscle-status.norm  { color: #7fb89a; }
+.muscle-status.over  { color: #e27d60; }
+
+.muscles-recs {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: var(--card);
+  border-radius: 14px;
+}
+.muscles-recs h4 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+}
+.muscle-rec {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bg);
+}
+.muscle-rec:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.muscle-rec-head {
+  font-size: 14px;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+.muscle-rec-ex {
+  font-size: 13px;
+  color: var(--accent);
+  line-height: 1.4;
+}
