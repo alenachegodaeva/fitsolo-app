@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitsolo-v5';
+const CACHE_NAME = 'fitsolo-v6';
 const STATIC_ASSETS = [
   'index.html',
   'style.css',
@@ -6,12 +6,16 @@ const STATIC_ASSETS = [
   'manifest.webmanifest',
 ];
 
-// Установка: кэшируем основные файлы
+// Установка: кэшируем основные файлы (безопасно — падение одного не рушит весь install)
 self.addEventListener('install', (event) => {
-  console.log('[SW] Установка');
+  console.log('[SW] Установка v6');
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
+      return Promise.all(
+        STATIC_ASSETS.map(url =>
+          cache.add(url).catch(err => console.warn('[SW] Не закэшировано:', url, err))
+        )
+      );
     })
   );
   self.skipWaiting();
@@ -19,7 +23,7 @@ self.addEventListener('install', (event) => {
 
 // Активация: чистим старые кэши
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Активация');
+  console.log('[SW] Активация v6');
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
