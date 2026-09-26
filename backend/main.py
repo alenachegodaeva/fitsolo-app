@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto
+from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
 from auth import hash_password, verify_password, create_token, get_user_id_from_token
@@ -675,7 +675,25 @@ def get_achievements(user_id: int, authorization: Optional[str] = Header(None)):
     ]
 
     earned_badges = [a["icon"] for a in achievements if a["done"]]
-
+    # === ЗАПИСЬ НОВЫХ ДОСТИЖЕНИЙ В БД ===
+    # Открываем свежую сессию, т.к. db уже закрыта
+    db2 = SessionLocal()
+    existing = {
+        row.achievement_id
+        for row in db2.query(Achievement).filter_by(user_id=user_id).all()
+    }
+    newly_earned = []
+    for a in achievements:
+        if a["done"] and a["id"] not in existing:
+            db2.add(Achievement(
+                user_id=user_id,
+                achievement_id=a["id"],
+                earned_at=datetime.utcnow(),
+            ))
+            newly_earned.append(a["id"])
+    if newly_earned:
+        db2.commit()
+    db2.close()
     return {
         "streak": streak,
         "total_workouts": total_workouts,
@@ -865,6 +883,27 @@ def pin_photo(photo_id: int, authorization: Optional[str] = Header(None)):
     db.commit()
     db.close()
     return {"ok": True}
+
+    # ===== ДАТЫ ДОСТИЖЕНИЙ =====
+
+@app.get("/api/achievements/dates/{user_id}")
+def get_achievement_dates(user_id: int, authorization: Optional[str] = Header(None)):
+    """Возвращает словарь { "2026-09-26": ["first_workout", "workouts_10"] } — 
+    дни, когда были получены достижения."""
+    check_own(authorization, user_id)
+    db = SessionLocal()
+    rows = db.query(Achievement).filter_by(user_id=user_id).all()
+    db.close()
+
+    by_day = {}
+    for r in rows:
+        key = r.earned_at.date().isoformat()
+        if key not in by_day:
+            by_day[key] = []
+        by_day[key].append(r.achievement_id)
+
+    return by_day
+    
     # ===== КАЛЕНДАРЬ ТРЕНИРОВОК =====
 
 @app.get("/api/calendar/{user_id}")

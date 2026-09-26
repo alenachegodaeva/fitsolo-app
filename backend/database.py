@@ -76,6 +76,13 @@ class ProgressPhoto(Base):
     note = Column(Text, nullable=True)             # заметка
     is_pinned = Column(Boolean, default=False)     # закреплённое (главное) фото
 
-
+class Achievement(Base):
+    __tablename__ = "achievements"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    achievement_id = Column(String, nullable=False)  # "first_workout", "workouts_10", ...
+    earned_at = Column(DateTime, default=datetime.utcnow)
+    
 def init_db():
     Base.metadata.create_all(bind=engine)
+    
