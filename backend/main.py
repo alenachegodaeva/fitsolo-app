@@ -531,3 +531,193 @@ def get_me(authorization: Optional[str] = Header(None)):
         raise HTTPException(401, "Недействительный токен")
     return get_profile(user_id)
 
+
+
+# ===== ДОСТИЖЕНИЯ =====
+
+@app.get("/api/achievements/{user_id}")
+def get_achievements(user_id: int):
+    """Считает серию и достижения пользователя из дневника и питания."""
+    from datetime import datetime, timedelta
+
+    db = SessionLocal()
+    user = db.query(User).get(user_id)
+    if not user:
+        db.close()
+        raise HTTPException(404, "Пользователь не найден")
+
+    workouts = db.query(WorkoutLog).filter_by(user_id=user_id).all()
+    meals = db.query(Meal).filter_by(user_id=user_id).all()
+    db.close()
+
+    # === СЕРИЯ (streak) ===
+    # Уникальные дни, где была тренировка ИЛИ приём пищи
+    active_dates = set()
+    for w in workouts:
+        if w.date:
+            active_dates.add(w.date.date())
+    for m in meals:
+        if m.date:
+            active_dates.add(m.date.date())
+
+    # Считаем streak: идём от сегодня назад, пока есть активность
+    streak = 0
+    today = datetime.utcnow().date()
+    # Если сегодня ещё нет активности — начинаем со вчера (серия не сбрасывается в тот же день)
+    check_date = today if today in active_dates else today - timedelta(days=1)
+    while check_date in active_dates:
+        streak += 1
+        check_date -= timedelta(days=1)
+
+    # === ОБЩИЕ МЕТРИКИ ===
+    total_workouts = len(workouts)
+    total_tonnage = 0
+    max_weight = 0
+    for w in workouts:
+        total_tonnage += (w.weight or 0) * (w.reps or 0) * (w.sets or 0)
+        if (w.weight or 0) > max_weight:
+            max_weight = w.weight or 0
+    total_tonnage = round(total_tonnage)
+
+    # Прогресс в упражнениях: в скольких упражнениях вес вырос хотя бы 2 раза
+    by_exercise = {}
+    for w in workouts:
+        by_exercise.setdefault(w.exercise, []).append(w.weight or 0)
+    progressed_exercises = 0
+    for name, weights in by_exercise.items():
+        if is_cardio(name):
+            continue
+        # Проверяем, есть ли рост хотя бы на 2 шагах
+        rises = 0
+        for i in range(1, len(weights)):
+            if weights[i] > weights[i-1]:
+                rises += 1
+        if rises >= 2:
+            progressed_exercises += 1
+
+    # Дней с питанием подряд
+    meal_dates = sorted({m.date.date() for m in meals if m.date})
+    nutrition_streak = 0
+    if meal_dates:
+        # Максимальная серия подряд
+        current = 1
+        max_streak = 1
+        for i in range(1, len(meal_dates)):
+            if meal_dates[i] - meal_dates[i-1] == timedelta(days=1):
+                current += 1
+                max_streak = max(max_streak, current)
+            else:
+                current = 1
+        nutrition_streak = max_streak
+
+    # Уникальные дни питания (для достижения "неделя питания")
+    unique_meal_days = len(set(m.date.date() for m in meals if m.date))
+
+    # === СПИСОК ДОСТИЖЕНИЙ ===
+    achievements = [
+        {
+            "id": "first_workout",
+            "title": "Первая тренировка",
+            "icon": "🥇",
+            "done": total_workouts >= 1,
+            "progress": min(total_workouts, 1),
+            "target": 1,
+        },
+        {
+            "id": "workouts_10",
+            "title": "10 тренировок",
+            "icon": "💪",
+            "done": total_workouts >= 10,
+            "progress": min(total_workouts, 10),
+            "target": 10,
+        },
+        {
+            "id": "workouts_50",
+            "title": "50 тренировок",
+            "icon": "🏋️",
+            "done": total_workouts >= 50,
+            "progress": min(total_workouts, 50),
+            "target": 50,
+        },
+        {
+            "id": "streak_7",
+            "title": "Серия 7 дней",
+            "icon": "🔥",
+            "done": streak >= 7,
+            "progress": min(streak, 7),
+            "target": 7,
+        },
+        {
+            "id": "streak_30",
+            "title": "Серия 30 дней",
+            "icon": "🔥🔥",
+            "done": streak >= 30,
+            "progress": min(streak, 30),
+            "target": 30,
+        },
+        {
+            "id": "tonnage_100",
+            "title": "100 тонн поднято",
+            "icon": "💯",
+            "done": total_tonnage >= 100000,
+            "progress": min(total_tonnage, 100000),
+            "target": 100000,
+        },
+        {
+            "id": "pr_50kg",
+            "title": "50 кг в подходе",
+            "icon": "🎯",
+            "done": max_weight >= 50,
+            "progress": min(round(max_weight), 50),
+            "target": 50,
+        },
+        {
+            "id": "pr_100kg",
+            "title": "100 кг в подходе",
+            "icon": "🎯🎯",
+            "done": max_weight >= 100,
+            "progress": min(round(max_weight), 100),
+            "target": 100,
+        },
+        {
+            "id": "progress_5",
+            "title": "Прогресс в 5 упражнениях",
+            "icon": "📈",
+            "done": progressed_exercises >= 5,
+            "progress": min(progressed_exercises, 5),
+            "target": 5,
+        },
+        {
+            "id": "nutrition_week",
+            "title": "Неделя питания",
+            "icon": "🍎",
+            "done": unique_meal_days >= 7,
+            "progress": min(unique_meal_days, 7),
+            "target": 7,
+        },
+    ]
+
+    # === БЕЙДЖИ (для отображения в UI) ===
+    earned_badges = [a["icon"] for a in achievements if a["done"]]
+
+    return {
+        "streak": streak,
+        "total_workouts": total_workouts,
+        "total_tonnage": total_tonnage,
+        "max_weight": round(max_weight, 1),
+        "progressed_exercises": progressed_exercises,
+        "unique_meal_days": unique_meal_days,
+        "nutrition_streak": nutrition_streak,
+        "earned_count": len(earned_badges),
+        "earned_badges": earned_badges,
+        "achievements": achievements,
+    }
+
+
+def is_cardio(name: str) -> bool:
+    """Помощник: определяет, кардио ли это."""
+    if not name:
+        return False
+    n = name.lower()
+    return n.startswith("кардио") or n.startswith("заминка") or "растяжка" in n
+

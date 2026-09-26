@@ -264,6 +264,7 @@ async function showMain() {
   loadLogs();
   loadChatHistory();
   setupExerciseAutocomplete();
+  loadAchievements();
 }
 
 async function loadProfileName() {
@@ -294,7 +295,7 @@ document.querySelectorAll(".tab[data-tab]").forEach(t => {
     document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
-    if (t.dataset.tab === "stats") loadStats();
+    if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); }
     if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); }
     if (t.dataset.tab === "log") buildExercisePicker();
   });
@@ -502,6 +503,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
     document.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
     updateWeightPlaceholder("");
     await loadLogs();
+    loadAchievements();  // ← обновить достижения после тренировки
     const firstItem = document.querySelector(".log-item");
     if (firstItem) {
       firstItem.classList.add("just-added");
@@ -776,6 +778,82 @@ async function loadStats() {
     statsCharts.push(chart);
   });
 }
+// ===== ДОСТИЖЕНИЯ =====
+let achievementsCache = null;
+let lastEarnedCount = parseInt(localStorage.getItem("lastEarnedCount") || "0");
+
+async function loadAchievements() {
+  try {
+    const res = await apiFetch(`/api/achievements/${userId}`);
+    const data = await res.json();
+    achievementsCache = data;
+
+    // Обновляем streak в шапке
+    renderStreakBadge(data.streak, data.earned_count);
+
+    // Обновляем блок на «Прогресс»
+    renderAchievements(data);
+
+    // Проверяем новые достижения
+    if (data.earned_count > lastEarnedCount) {
+      const diff = data.earned_count - lastEarnedCount;
+      showToast(`🏆 Новое достижение! (${data.earned_count}/${data.achievements.length})`, "success");
+      localStorage.setItem("lastEarnedCount", String(data.earned_count));
+      lastEarnedCount = data.earned_count;
+    }
+  } catch (err) {
+    console.warn("Не удалось загрузить достижения:", err);
+  }
+}
+
+function renderStreakBadge(streak, earnedCount) {
+  const el = document.getElementById("streak-badge");
+  if (!el) return;
+  if (streak > 0) {
+    el.textContent = `🔥 ${streak}`;
+    el.style.display = "inline-flex";
+  } else {
+    el.style.display = "none";
+  }
+}
+
+function renderAchievements(data) {
+  const container = document.getElementById("achievements-block");
+  if (!container) return;
+
+  const percent = Math.round((data.earned_count / data.achievements.length) * 100);
+
+  container.innerHTML = `
+    <div class="achievements-header">
+      <div>
+        <h3>🏆 Достижения</h3>
+        <div class="achievements-sub">${data.earned_count} из ${data.achievements.length} открыто</div>
+      </div>
+      <div class="achievements-count">${percent}%</div>
+    </div>
+    <div class="achievements-bar-wrap">
+      <div class="achievements-bar-fill" style="width: ${percent}%"></div>
+    </div>
+    <div class="achievements-grid">
+      ${data.achievements.map(a => {
+        const pct = Math.min(100, Math.round((a.progress / a.target) * 100));
+        return `
+          <div class="achievement-card ${a.done ? "done" : ""}">
+            <div class="achievement-icon">${a.icon}</div>
+            <div class="achievement-title">${a.title}</div>
+            ${a.done
+              ? `<div class="achievement-done-label">✓ Получено</div>`
+              : `<div class="achievement-progress">
+                   <div class="achievement-bar"><div class="achievement-bar-fill" style="width:${pct}%"></div></div>
+                   <div class="achievement-progress-text">${a.progress} / ${a.target}</div>
+                 </div>`
+            }
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 
 // ===== ПИТАНИЕ =====
 async function loadNutrition() {
@@ -946,6 +1024,7 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
     });
     f.reset();
     loadMeals();
+    loadAchievements();  // ← обновить после еды
     showToast("Приём пищи добавлен ✓", "success");
   } catch (err) { showToast("Не удалось добавить", "error"); }
 });
