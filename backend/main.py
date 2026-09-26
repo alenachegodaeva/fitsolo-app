@@ -8,6 +8,8 @@ from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal
 import os 
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
+from auth import hash_password, verify_password, create_token, get_user_id_from_token
+from fastapi import Header
 
 app = FastAPI(title="FitSolo API")
 
@@ -65,6 +67,23 @@ class MealIn(BaseModel):
     protein: float
     fat: float
     carbs: float
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, index=True, nullable=True)
+    password_hash = Column(String, nullable=True)
+    name = Column(String)
+    gender = Column(String)
+    age = Column(Integer)
+    weight = Column(Float)
+    height = Column(Float)
+    experience = Column(String)
+    goal = Column(String)
+    days_per_week = Column(Integer)
+    equipment = Column(String)
+    injuries = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # ===== ПРОФИЛЬ =====
@@ -425,4 +444,106 @@ def get_meals_history(user_id: int, days: int = 7):
 
     return {"days": result, "average": avg} 
 
+
+# ===== АВТОРИЗАЦИЯ =====
+
+class RegisterIn(BaseModel):
+    email: str
+    password: str
+    name: str
+    gender: str
+    age: int
+    weight: float
+    height: float
+    experience: str
+    goal: str
+    days_per_week: int
+    equipment: List[str]
+    injuries: List[str] = []
+    link_user_id: Optional[int] = None  # привязать старый профиль
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/register")
+def register(r: RegisterIn):
+    db = SessionLocal()
+    
+    # Проверка что email не занят
+    existing = db.query(User).filter_by(email=r.email.lower()).first()
+    if existing:
+        db.close()
+        raise HTTPException(400, "Этот email уже зарегистрирован")
+    
+    # Если пользователь просит привязать старый профиль
+    if r.link_user_id:
+        user = db.query(User).get(r.link_user_id)
+        if not user:
+            db.close()
+            raise HTTPException(404, "Старый профиль не найден")
+        # Обновляем существующего
+        user.email = r.email.lower()
+        user.password_hash = hash_password(r.password)
+        user.name = r.name
+        user.gender = r.gender
+        user.age = r.age
+        user.weight = r.weight
+        user.height = r.height
+        user.experience = r.experience
+        user.goal = r.goal
+        user.days_per_week = r.days_per_week
+        user.equipment = json.dumps(r.equipment)
+        user.injuries = json.dumps(r.injuries)
+    else:
+        # Создаём нового
+        user = User(
+            email=r.email.lower(),
+            password_hash=hash_password(r.password),
+            name=r.name, gender=r.gender, age=r.age,
+            weight=r.weight, height=r.height,
+            experience=r.experience, goal=r.goal,
+            days_per_week=r.days_per_week,
+            equipment=json.dumps(r.equipment),
+            injuries=json.dumps(r.injuries),
+        )
+        db.add(user)
+    
+    db.commit()
+    db.refresh(user)
+    user_id = user.id
+    db.close()
+    
+    return {
+        "token": create_token(user_id),
+        "user_id": user_id,
+    }
+
+
+@app.post("/api/login")
+def login(l: LoginIn):
+    db = SessionLocal()
+    user = db.query(User).filter_by(email=l.email.lower()).first()
+    db.close()
+    
+    if not user or not verify_password(l.password, user.password_hash):
+        raise HTTPException(401, "Неверный email или пароль")
+    
+    return {
+        "token": create_token(user.id),
+        "user_id": user.id,
+    }
+
+
+@app.get("/api/me")
+def get_me(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Требуется авторизация")
+    token = authorization.replace("Bearer ", "")
+    user_id = get_user_id_from_token(token)
+    if not user_id:
+        raise HTTPException(401, "Недействительный токен")
+    return get_profile(user_id)
 
