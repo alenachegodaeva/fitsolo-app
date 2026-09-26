@@ -876,3 +876,91 @@ form button[type="submit"] {
   .day-card, .stat-card, .kbju-card { padding: 18px; }
   .msg { max-width: 92%; }
 }
+
+/* ===== ВЫБОР УПРАЖНЕНИЙ В ДНЕВНИКЕ ===== */
+.exercise-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+  min-height: 0;
+}
+.exercise-picker:empty { display: none; }
+
+.exercise-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s var(--transition);
+}
+.exercise-chip:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+.exercise-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.exercise-search-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.exercise-search-wrap input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  transition: all 0.2s var(--transition);
+}
+.exercise-search-wrap input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  background: var(--bg-card);
+}
+
+.exercise-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  margin-top: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.exercise-dropdown:empty { display: none; }
+
+.exercise-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.exercise-option:last-child { border-bottom: none; }
+.exercise-option:hover { background: var(--accent-soft); }
+.exercise-option .ex-source {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-left: 6px;
+}

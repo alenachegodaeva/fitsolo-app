@@ -119,19 +119,25 @@
     </div>
 
     <div id="tab-log" class="tab-content">
-      <h3>Добавить запись</h3>
-      <form id="log-form">
-        <input name="exercise" placeholder="Упражнение" required>
-        <div class="row">
-          <input name="weight" type="number" step="0.5" placeholder="Вес (кг)" required>
-          <input name="reps" type="number" placeholder="Повторы" required>
-          <input name="sets" type="number" placeholder="Подходы" required>
-        </div>
-        <button type="submit">Сохранить</button>
-      </form>
-      <h3 class="log-title">История</h3>
-      <div id="logs-list"></div>
+  <h3>Добавить запись</h3>
+
+  <div id="exercise-picker" class="exercise-picker"></div>
+
+  <form id="log-form">
+    <div class="exercise-search-wrap">
+      <input name="exercise" id="log-exercise-input" placeholder="Упражнение" required autocomplete="off">
+      <div id="exercise-dropdown" class="exercise-dropdown"></div>
     </div>
+    <div class="row">
+      <input name="weight" type="number" step="0.5" placeholder="Вес (кг)" required>
+      <input name="reps" type="number" placeholder="Повторы" required>
+      <input name="sets" type="number" placeholder="Подходы" required>
+    </div>
+    <button type="submit">Сохранить</button>
+  </form>
+  <h3 class="log-title">История</h3>
+  <div id="logs-list"></div>
+</div>
 
     <div id="tab-stats" class="tab-content">
       <div id="stats-content">
@@ -163,6 +169,18 @@
 
       <h3 class="log-title">Съедено сегодня</h3>
       <div id="meals-list"></div>
+              <h3 class="log-title">📊 История питания</h3>
+        <div class="history-switch">
+          <button id="hist-7" class="btn-secondary active">7 дней</button>
+          <button id="hist-30" class="btn-secondary">30 дней</button>
+        </div>
+        <div class="nutrition-progress" id="history-summary">
+          <p class="hint">Загружаю...</p>
+        </div>
+        <div class="chart-wrapper" style="height: 220px; margin-bottom: 16px;">
+          <canvas id="nutrition-history-chart"></canvas>
+        </div>
+        <div id="history-days"></div>
     </div>
   </section>
 

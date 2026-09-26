@@ -385,33 +385,55 @@ async function loadStats() {
 
   stats.forEach((s, i) => {
     const ctx = document.getElementById(`chart-${i}`);
-    const chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: s.history.map(h => new Date(h.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })),
-        datasets: [{
-          label: "Вес (кг)",
-          data: s.history.map(h => h.weight),
-          borderColor: accent,
-          backgroundColor: accent + "33",
-          fill: true,
-          tension: 0.3,
-          pointRadius: 4,
-          pointBackgroundColor: accent,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: textColor }, grid: { display: false } },
-          y: { ticks: { color: textColor }, grid: { color: textColor + "22" } }
-        }
+   const chart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: s.history.map(h => new Date(h.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })),
+    datasets: [{
+      label: "Вес (кг)",
+      data: s.history.map(h => h.weight),
+      borderColor: accent,
+      backgroundColor: accent + "20",
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      pointBackgroundColor: accent,
+      pointBorderColor: "transparent",
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "rgba(20, 22, 26, 0.95)",
+        titleColor: "#e8eaed",
+        bodyColor: "#e8eaed",
+        borderColor: accent,
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 10,
+        displayColors: false,
       }
-    });
-    statsCharts.push(chart);
-  });
+    },
+    scales: {
+      x: {
+        ticks: { color: textColor, font: { size: 11 } },
+        grid: { display: false },
+        border: { display: false }
+      },
+      y: {
+        ticks: { color: textColor, font: { size: 11 } },
+        grid: { color: textColor + "10" },
+        border: { display: false }
+      }
+    }
+  }
+});
+statsCharts.push(chart);
 }
   // ===== ПИТАНИЕ =====
 async function loadNutrition() {
