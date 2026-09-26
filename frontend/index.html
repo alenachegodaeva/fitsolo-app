@@ -190,7 +190,7 @@
       <div id="logs-list"></div>
     </div>
 
-        <!-- ПРОГРЕСС -->
+    <!-- ПРОГРЕСС -->
     <div id="tab-stats" class="tab-content">
       <div id="achievements-block"></div>
 
@@ -200,7 +200,7 @@
           <h3>📸 Прогресс тела</h3>
           <button id="photo-add-btn" class="btn-secondary">+ Добавить</button>
         </div>
-                <details class="photo-tips">
+        <details class="photo-tips">
           <summary>ℹ️ Как правильно фоткаться</summary>
           <ul>
             <li>Раз в 1–2 недели — чаще не нужно</li>
@@ -267,13 +267,15 @@
   </section>
 
   <div id="toast-container"></div>
-     <!-- Input для камеры (iOS откроет камеру) -->
+
+  <!-- Input для камеры (iOS откроет камеру) -->
   <input type="file" id="photo-input-camera" accept="image/*" capture="environment"
          style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
 
   <!-- Input для галереи (iOS откроет галерею) -->
   <input type="file" id="photo-input-gallery" accept="image/*"
          style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
+
   <!-- Модалка загрузки/просмотра фото -->
   <div id="photo-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card">
@@ -329,25 +331,16 @@
       <div id="slider-weight" class="slider-weight"></div>
       <div id="slider-note" class="slider-note"></div>
     </div>
-        <div class="slider-actions">
+
+    <div class="slider-actions">
       <button id="slider-pin" class="slider-btn" type="button">📌 Закрепить</button>
       <button id="slider-delete" class="slider-btn danger" type="button">🗑 Удалить</button>
     </div>
 
-
     <div id="slider-thumbs" class="slider-thumbs"></div>
   </div>
 
-  <script src="app2.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('Service Worker зарегистрирован:', reg))
-          .catch(err => console.log('Ошибка регистрации SW:', err));
-      });
-    }
-      <!-- Модалка редактирования профиля -->
+  <!-- Модалка редактирования профиля -->
   <div id="edit-profile-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card" style="max-width:520px;">
       <button id="edit-profile-close" class="modal-close">✕</button>
@@ -410,6 +403,16 @@
       </form>
     </div>
   </div>
+
+  <script src="app2.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker зарегистрирован:', reg))
+          .catch(err => console.log('Ошибка регистрации SW:', err));
+      });
+    }
   </script>
 </body>
 </html>
