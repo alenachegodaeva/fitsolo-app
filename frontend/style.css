@@ -1724,3 +1724,40 @@ input[type="number"] {
     height: 116px;
   }
 }
+/* Кнопки в слайдере: закрепить / удалить */
+.slider-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 6px 20px 4px;
+}
+
+.slider-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+
+.slider-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.slider-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.slider-btn.danger {
+  color: #e07f7f;
+  border-color: rgba(224, 127, 127, 0.35);
+}
+
+.slider-btn.danger:hover {
+  background: rgba(224, 127, 127, 0.15);
+}

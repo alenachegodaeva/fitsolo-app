@@ -1360,3 +1360,83 @@ function checkWeeklyPhotoReminder(photos) {
     showToast("📸 Пора сделать новое фото прогресса!", "success");
   }, 1500);
 }
+// ============================================================
+// ===== УДАЛЕНИЕ / ЗАКРЕПЛЕНИЕ ФОТО ==========================
+// ============================================================
+
+const sliderDeleteBtn = document.getElementById("slider-delete");
+const sliderPinBtn = document.getElementById("slider-pin");
+
+if (sliderDeleteBtn) {
+  sliderDeleteBtn.addEventListener("click", async () => {
+    const p = photosCache[sliderIndex];
+    if (!p) return;
+    if (!confirm("Удалить это фото? Действие необратимо.")) return;
+
+    sliderDeleteBtn.disabled = true;
+    sliderDeleteBtn.textContent = "Удаляю...";
+
+    try {
+      const res = await apiFetch(`/api/photos/${p.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      showToast("Фото удалено", "success");
+
+      // Обновляем кэш
+      photosCache.splice(sliderIndex, 1);
+
+      if (!photosCache.length) {
+        closeSlider();
+        loadPhotos();
+        return;
+      }
+
+      // Если удалили последнее — прыгаем на предыдущее
+      if (sliderIndex >= photosCache.length) {
+        sliderIndex = photosCache.length - 1;
+      }
+      renderSlider();
+      loadPhotos();
+    } catch (err) {
+      showToast("Не удалось удалить фото", "error");
+      console.error(err);
+    } finally {
+      sliderDeleteBtn.disabled = false;
+      sliderDeleteBtn.textContent = "🗑 Удалить";
+    }
+  });
+}
+
+if (sliderPinBtn) {
+  sliderPinBtn.addEventListener("click", async () => {
+    const p = photosCache[sliderIndex];
+    if (!p) return;
+
+    if (p.is_pinned) {
+      showToast("Это фото уже закреплено", "success");
+      return;
+    }
+
+    sliderPinBtn.disabled = true;
+    sliderPinBtn.textContent = "Закрепляю...";
+
+    try {
+      const res = await apiFetch(`/api/photos/${p.id}/pin`, { method: "POST" });
+      if (!res.ok) throw new Error("pin failed");
+      showToast("📌 Фото закреплено", "success");
+      await loadPhotos();
+      // Пересинхронизируем photosCache — loadPhotos() уже обновил
+      // Ищем закреплённое фото в новом photosCache
+      const newPinned = photosCache.find(x => x.is_pinned);
+      if (newPinned) {
+        sliderIndex = photosCache.findIndex(x => x.id === newPinned.id);
+        renderSlider();
+      }
+    } catch (err) {
+      showToast("Не удалось закрепить", "error");
+      console.error(err);
+    } finally {
+      sliderPinBtn.disabled = false;
+      sliderPinBtn.textContent = "📌 Закрепить";
+    }
+  });
+}
