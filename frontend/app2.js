@@ -1173,6 +1173,21 @@ function closePhotoModal() {
 document.getElementById("photo-pick-camera").addEventListener("click", () => {
   photoInput.setAttribute("capture", "environment");
   photoInput.click();
+  photoInput.addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    pendingPhotoBlob = await compressImage(file, 1280, 0.82);
+    photoPreview.src = URL.createObjectURL(pendingPhotoBlob);
+    photoPreview.style.display = "block";
+    photoPreviewPlaceholder.style.display = "none";
+    } catch (err) {
+    showToast("Не удалось обработать фото", "error");
+    console.error(err);
+  }
+  photoInput.value = "";
+  photoInput.removeAttribute("capture");
+});
 });
 
 // --- Галерея ---
