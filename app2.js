@@ -18,6 +18,33 @@ function showToast(message, type = "success") {
   }, 2200);
 }
 
+// ===== УТИЛИТЫ =====
+// Кардио/заминка/растяжка — единицы в минутах, не в кг
+function isCardio(exerciseName) {
+  if (!exerciseName) return false;
+  const n = exerciseName.toLowerCase();
+  return n.startsWith("кардио") || n.startsWith("заминка") || n.includes("растяжка");
+}
+
+// Красивое представление записи в дневнике
+function formatLogEntry(l) {
+  if (isCardio(l.exercise)) {
+    return `<strong>${l.exercise}</strong> — ${l.weight} мин`;
+  }
+  return `<strong>${l.exercise}</strong> — ${l.weight}кг × ${l.reps} × ${l.sets}`;
+}
+
+// Динамический placeholder в поле «Вес»
+function updateWeightPlaceholder(exerciseName) {
+  const input = document.querySelector('#log-form input[name="weight"]');
+  if (!input) return;
+  if (exerciseName && isCardio(exerciseName)) {
+    input.placeholder = "Минуты";
+  } else {
+    input.placeholder = "Вес (кг)";
+  }
+}
+
 // ===== PWA: Установка на телефон =====
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -338,8 +365,8 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
     if (!res.ok) throw new Error("server error");
     f.reset();
     document.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
+    updateWeightPlaceholder("");
     await loadLogs();
-    // Подсветка свежей записи
     const firstItem = document.querySelector(".log-item");
     if (firstItem) {
       firstItem.classList.add("just-added");
@@ -358,7 +385,6 @@ async function loadLogs() {
   const res = await fetch(`${API}/api/logs/${userId}`);
   const allLogs = await res.json();
 
-  // Фильтр по периоду
   let logs = allLogs;
   if (logPeriod > 0) {
     const cutoff = new Date();
@@ -367,7 +393,6 @@ async function loadLogs() {
     logs = allLogs.filter(l => new Date(l.date) >= cutoff);
   }
 
-  // Сортировка: свежие сверху
   logs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const el = document.getElementById("logs-list");
@@ -377,7 +402,6 @@ async function loadLogs() {
     return;
   }
 
-  // Группировка по дате
   const groups = {};
   logs.forEach(l => {
     const d = new Date(l.date);
@@ -386,7 +410,6 @@ async function loadLogs() {
     groups[key].push(l);
   });
 
-  // Форматирование заголовка даты
   const formatDate = (isoKey) => {
     const d = new Date(isoKey + "T00:00:00");
     const today = new Date();
@@ -405,9 +428,7 @@ async function loadLogs() {
       <div class="log-day-title">${formatDate(dateKey)}</div>
       ${groups[dateKey].map(l => `
         <div class="log-item">
-          <div>
-            <strong>${l.exercise}</strong> — ${l.weight}кг × ${l.reps} × ${l.sets}
-          </div>
+          <div>${formatLogEntry(l)}</div>
           <div class="log-actions">
             <button class="log-repeat" title="Повторить"
               data-exercise="${l.exercise}"
@@ -421,7 +442,6 @@ async function loadLogs() {
     </div>
   `).join("");
 
-  // Удаление записи
   document.querySelectorAll(".log-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (confirm("Удалить запись?")) {
@@ -436,7 +456,6 @@ async function loadLogs() {
     });
   });
 
-  // Повторить запись — заполнить форму
   document.querySelectorAll(".log-repeat").forEach(btn => {
     btn.addEventListener("click", () => {
       const f = document.getElementById("log-form");
@@ -444,10 +463,10 @@ async function loadLogs() {
       f.weight.value   = btn.dataset.weight;
       f.reps.value     = btn.dataset.reps;
       f.sets.value     = btn.dataset.sets;
-      // Скролл к форме + фокус на вес
+      updateWeightPlaceholder(btn.dataset.exercise);
       document.getElementById("log-form").scrollIntoView({ behavior: "smooth", block: "center" });
       setTimeout(() => f.weight.focus(), 300);
-      showToast("Заполнено — измени вес и сохрани", "success");
+      showToast("Заполнено — измени и сохрани", "success");
     });
   });
 }
@@ -490,6 +509,7 @@ function buildExercisePicker() {
       input.value = name;
       picker.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
+      updateWeightPlaceholder(name);
       document.querySelector('#log-form input[name="weight"]').focus();
     });
     picker.appendChild(chip);
@@ -503,6 +523,7 @@ function setupExerciseAutocomplete() {
   if (!input || !dropdown) return;
 
   input.addEventListener("input", () => {
+    updateWeightPlaceholder(input.value);
     const q = input.value.trim().toLowerCase();
     dropdown.innerHTML = "";
     if (q.length < 1) return;
@@ -523,6 +544,7 @@ function setupExerciseAutocomplete() {
       el.addEventListener("click", () => {
         input.value = name;
         dropdown.innerHTML = "";
+        updateWeightPlaceholder(name);
         document.querySelector('#log-form input[name="weight"]').focus();
       });
       dropdown.appendChild(el);
@@ -562,7 +584,7 @@ async function loadStats() {
     <div class="stat-card">
       <div class="stat-header">
         <h3>${s.exercise}</h3>
-        <span class="stat-max">${s.max_weight} кг</span>
+        <span class="stat-max">${s.max_weight}${isCardio(s.exercise) ? " мин" : " кг"}</span>
       </div>
       <div class="stat-meta">
         <span>📊 Тоннаж: ${s.total_volume} кг</span>
@@ -579,7 +601,7 @@ async function loadStats() {
       data: {
         labels: s.history.map(h => new Date(h.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })),
         datasets: [{
-          label: "Вес (кг)",
+          label: isCardio(s.exercise) ? "Минуты" : "Вес (кг)",
           data: s.history.map(h => h.weight),
           borderColor: accent,
           backgroundColor: accent + "20",
@@ -762,7 +784,6 @@ function pickFood(ds) {
   foodDropdown.innerHTML = "";
 }
 
-// Пересчёт КБЖУ при изменении граммов
 const mealForm = document.getElementById("meal-form");
 mealForm.grams.addEventListener("input", recalcMacros);
 
