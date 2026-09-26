@@ -68,22 +68,6 @@ class MealIn(BaseModel):
     fat: float
     carbs: float
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    email = Column(String, unique=True, index=True, nullable=True)
-    password_hash = Column(String, nullable=True)
-    name = Column(String)
-    gender = Column(String)
-    age = Column(Integer)
-    weight = Column(Float)
-    height = Column(Float)
-    experience = Column(String)
-    goal = Column(String)
-    days_per_week = Column(Integer)
-    equipment = Column(String)
-    injuries = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # ===== ПРОФИЛЬ =====
