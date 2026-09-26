@@ -2,6 +2,8 @@ const API = "https://103.76.53.84.nip.io";
 let userId = localStorage.getItem("userId");
 let chatHistory = [];
 let statsCharts = [];
+let currentPlan = null;
+
 // ===== PWA: Установка на телефон =====
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -54,7 +56,6 @@ themeToggle.addEventListener("click", () => {
   document.documentElement.setAttribute("data-theme", next);
   themeToggle.textContent = next === "dark" ? "🌙" : "☀️";
   localStorage.setItem("theme", next);
-  // Обновить графики под новую тему
   if (statsCharts.length) loadStats();
 });
 
@@ -100,9 +101,7 @@ async function showMain() {
   loadPlan();
   loadLogs();
   loadChatHistory();
-  loadNutrition();
-  loadMeals();
-  loadMealsHistory();
+  setupExerciseAutocomplete();
 }
 
 async function loadProfileName() {
@@ -115,14 +114,6 @@ async function loadProfileName() {
   }
 }
 
-// Кнопка "Изменить профиль"
-document.getElementById("edit-profile").addEventListener("click", () => {
-  if (confirm("Изменить профиль? Потребуется заполнить анкету заново.")) {
-    localStorage.removeItem("userId");
-    location.reload();
-  }
-});
-
 if (userId) showMain();
 
 // ===== ТАБЫ =====
@@ -133,13 +124,12 @@ document.querySelectorAll(".tab").forEach(t => {
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
     if (t.dataset.tab === "stats") loadStats();
-    if (t.dataset.tab === "nutrition") loadNutrition();
+    if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); }
+    if (t.dataset.tab === "log") buildExercisePicker();
   });
 });
 
 // ===== ПРОГРАММА =====
-let currentPlan = null;
-
 async function loadPlan() {
   try {
     const res = await fetch(`${API}/api/plan/${userId}`);
@@ -171,6 +161,8 @@ async function loadPlan() {
         `).join("") || "<div class='ex-meta'>Нет подходящих упражнений</div>"}
       </div>
     `).join("");
+
+  buildExercisePicker();
 }
 
 function formatSplit(split) {
@@ -197,13 +189,13 @@ document.getElementById("export-btn").addEventListener("click", () => {
     <html><head><title>FitSolo — программа</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 30px; line-height: 1.5; }
-      h1 { color: #4caf50; }
+      h1 { color: #4a8a6e; }
       .day { margin-bottom: 30px; page-break-inside: avoid; }
-      .day h2 { color: #1a2332; border-bottom: 2px solid #4caf50; padding-bottom: 6px; }
+      .day h2 { color: #1a1d21; border-bottom: 2px solid #4a8a6e; padding-bottom: 6px; }
       .ex { margin: 8px 0; padding: 8px; background: #f5f7fa; border-radius: 6px; }
-      .ex strong { color: #1a2332; }
-      .meta { color: #5a6b7d; font-size: 13px; }
-      .desc { color: #5a6b7d; font-size: 12px; font-style: italic; margin-top: 4px; }
+      .ex strong { color: #1a1d21; }
+      .meta { color: #6b7280; font-size: 13px; }
+      .desc { color: #6b7280; font-size: 12px; font-style: italic; margin-top: 4px; }
     </style></head><body>
     <h1>🏋️ FitSolo — твоя программа</h1>
     <p class="meta">Сплит: <strong>${formatSplit(currentPlan.split)}</strong></p>
@@ -226,7 +218,6 @@ document.getElementById("export-btn").addEventListener("click", () => {
   setTimeout(() => w.print(), 500);
 });
 
-// ===== ИИ-ЧАТ =====
 // ===== ИСТОРИЯ ЧАТА =====
 async function loadChatHistory() {
   if (!userId) return;
@@ -257,6 +248,7 @@ async function clearChatHistory() {
     alert("Не удалось очистить историю");
   }
 }
+
 const chatBox = document.getElementById("chat-messages");
 
 function addMsg(text, who) {
@@ -325,6 +317,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
     }),
   });
   f.reset();
+  document.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
   loadLogs();
 });
 
@@ -351,13 +344,91 @@ async function loadLogs() {
   });
 }
 
+// ===== КНОПКИ УПРАЖНЕНИЙ В ДНЕВНИКЕ =====
+function buildExercisePicker() {
+  const picker = document.getElementById("exercise-picker");
+  if (!picker) return;
+  picker.innerHTML = "";
+  if (!currentPlan || !currentPlan.week) return;
+
+  const seen = new Set();
+  const planExercises = [];
+  currentPlan.week.forEach(day => {
+    (day.exercises || []).forEach(ex => {
+      if (ex.name && !seen.has(ex.name)) {
+        seen.add(ex.name);
+        planExercises.push(ex.name);
+      }
+    });
+  });
+
+  planExercises.forEach(name => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "exercise-chip";
+    chip.textContent = name;
+    chip.addEventListener("click", () => {
+      const input = document.getElementById("log-exercise-input");
+      input.value = name;
+      picker.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      document.querySelector('#log-form input[name="weight"]').focus();
+    });
+    picker.appendChild(chip);
+  });
+}
+
+// ===== АВТОДОПОЛНЕНИЕ УПРАЖНЕНИЙ =====
+function setupExerciseAutocomplete() {
+  const input = document.getElementById("log-exercise-input");
+  const dropdown = document.getElementById("exercise-dropdown");
+  if (!input || !dropdown) return;
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    dropdown.innerHTML = "";
+    if (q.length < 1) return;
+
+    const planNames = currentPlan?.week?.flatMap(d => (d.exercises || []).map(e => e.name)) || [];
+    const all = [...new Set(planNames)];
+
+    const matches = all
+      .filter(name => name.toLowerCase().includes(q))
+      .slice(0, 8);
+
+    if (!matches.length) return;
+
+    matches.forEach(name => {
+      const el = document.createElement("div");
+      el.className = "exercise-option";
+      el.textContent = name;
+      el.addEventListener("click", () => {
+        input.value = name;
+        dropdown.innerHTML = "";
+        document.querySelector('#log-form input[name="weight"]').focus();
+      });
+      dropdown.appendChild(el);
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".exercise-search-wrap")) dropdown.innerHTML = "";
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && dropdown.firstChild) {
+      e.preventDefault();
+      dropdown.firstChild.click();
+    }
+  });
+}
+
 // ===== СТАТИСТИКА =====
 async function loadStats() {
   const res = await fetch(`${API}/api/stats/${userId}`);
   const stats = await res.json();
   const el = document.getElementById("stats-content");
 
-  // Уничтожить старые графики
   statsCharts.forEach(c => c.destroy());
   statsCharts = [];
 
@@ -385,57 +456,59 @@ async function loadStats() {
 
   stats.forEach((s, i) => {
     const ctx = document.getElementById(`chart-${i}`);
-   const chart = new Chart(ctx, {
-  type: "line",
-  data: {
-    labels: s.history.map(h => new Date(h.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })),
-    datasets: [{
-      label: "Вес (кг)",
-      data: s.history.map(h => h.weight),
-      borderColor: accent,
-      backgroundColor: accent + "20",
-      fill: true,
-      tension: 0.4,
-      pointRadius: 3,
-      pointHoverRadius: 6,
-      pointBackgroundColor: accent,
-      pointBorderColor: "transparent",
-      borderWidth: 2,
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: "rgba(20, 22, 26, 0.95)",
-        titleColor: "#e8eaed",
-        bodyColor: "#e8eaed",
-        borderColor: accent,
-        borderWidth: 1,
-        padding: 10,
-        cornerRadius: 10,
-        displayColors: false,
-      }
-    },
-    scales: {
-      x: {
-        ticks: { color: textColor, font: { size: 11 } },
-        grid: { display: false },
-        border: { display: false }
+    const chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: s.history.map(h => new Date(h.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })),
+        datasets: [{
+          label: "Вес (кг)",
+          data: s.history.map(h => h.weight),
+          borderColor: accent,
+          backgroundColor: accent + "20",
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: accent,
+          pointBorderColor: "transparent",
+          borderWidth: 2,
+        }]
       },
-      y: {
-        ticks: { color: textColor, font: { size: 11 } },
-        grid: { color: textColor + "10" },
-        border: { display: false }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "rgba(20, 22, 26, 0.95)",
+            titleColor: "#e8eaed",
+            bodyColor: "#e8eaed",
+            borderColor: accent,
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 10,
+            displayColors: false,
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: textColor, font: { size: 11 } },
+            grid: { display: false },
+            border: { display: false }
+          },
+          y: {
+            ticks: { color: textColor, font: { size: 11 } },
+            grid: { color: textColor + "10" },
+            border: { display: false }
+          }
+        }
       }
-    }
-  }
-});
-statsCharts.push(chart);
+    });
+    statsCharts.push(chart);
+  });
 }
-  // ===== ПИТАНИЕ =====
+
+// ===== ПИТАНИЕ =====
 async function loadNutrition() {
   if (!userId) return;
   try {
@@ -461,7 +534,6 @@ async function loadMeals() {
     const res = await fetch(`${API}/api/meals/${userId}`);
     const meals = await res.json();
 
-    // считаем сумму за сегодня
     const today = new Date().toDateString();
     const todayMeals = meals.filter(m => new Date(m.date).toDateString() === today);
     const total = todayMeals.reduce((acc, m) => ({
@@ -471,7 +543,6 @@ async function loadMeals() {
       carbs: acc.carbs + (m.carbs || 0),
     }), { calories: 0, protein: 0, fat: 0, carbs: 0 });
 
-    // норма
     const normRes = await fetch(`${API}/api/nutrition/${userId}`);
     const norm = await normRes.json();
     const pct = Math.min(100, Math.round((total.calories / norm.target_calories) * 100));
@@ -514,108 +585,6 @@ async function loadMeals() {
   }
 }
 
-
-// ===== ИСТОРИЯ ПИТАНИЯ =====
-let nutritionChart = null;
-let historyDays = 7;
-
-async function loadMealsHistory(days = historyDays) {
-  if (!userId) return;
-  historyDays = days;
-
-  // Подсветка активной кнопки
-  document.getElementById("hist-7").classList.toggle("active", days === 7);
-  document.getElementById("hist-30").classList.toggle("active", days === 30);
-
-  try {
-    const res = await fetch(`${API}/api/meals/history/${userId}?days=${days}`);
-    const data = await res.json();
-
-    // Сводка
-    const avg = data.average;
-    const summaryEl = document.getElementById("history-summary");
-    if (avg.days_tracked > 0) {
-      summaryEl.innerHTML = `
-        <div class="bar-info">
-          <span>📊 Среднее за день:</span>
-          <span><strong>${avg.calories}</strong> ккал</span>
-        </div>
-        <div class="bar-info" style="margin-top:6px;">
-          <span>Б: ${avg.protein} г</span>
-          <span>Ж: ${avg.fat} г</span>
-          <span>У: ${avg.carbs} г</span>
-        </div>
-        <div class="bar-info" style="margin-top:6px; color: var(--text-muted); font-size:12px;">
-          <span>Дней с записями: ${avg.days_tracked} из ${days}</span>
-        </div>
-      `;
-    } else {
-      summaryEl.innerHTML = `<p class="hint">Добавь приёмы пищи, чтобы увидеть статистику 📈</p>`;
-    }
-
-    // График
-    const textColor = getComputedStyle(document.documentElement).getPropertyValue("--text").trim();
-    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
-
-    if (nutritionChart) nutritionChart.destroy();
-
-    const ctx = document.getElementById("nutrition-history-chart");
-    nutritionChart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: data.days.map(d => {
-          const dt = new Date(d.date);
-          return dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
-        }),
-        datasets: [{
-          label: "Ккал",
-          data: data.days.map(d => d.calories),
-          backgroundColor: accent + "cc",
-          borderColor: accent,
-          borderWidth: 1,
-          borderRadius: 4,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: textColor + "22" }, beginAtZero: true },
-        },
-      },
-    });
-
-    // Список по дням
-    const daysEl = document.getElementById("history-days");
-    const todayStr = new Date().toISOString().slice(0, 10);
-    daysEl.innerHTML = data.days.slice().reverse().map(d => {
-      const date = new Date(d.date);
-      const dateStr = date.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", weekday: "short" });
-      const isEmpty = d.meals_count === 0;
-      const isToday = d.date === todayStr;
-      return `
-        <div class="history-day ${isToday ? "today" : ""}">
-          <div>
-            <div class="h-date">${dateStr}${isToday ? " · сегодня" : ""}</div>
-          </div>
-          <div style="text-align:right;">
-            <div class="h-cal ${isEmpty ? "empty" : ""}">${d.calories} ккал</div>
-            ${!isEmpty ? `<div class="h-macros">Б${d.protein} · Ж${d.fat} · У${d.carbs}</div>` : ""}
-          </div>
-        </div>
-      `;
-    }).join("");
-  } catch (err) {
-    console.error("Не удалось загрузить историю питания:", err);
-  }
-}
-
-// Кнопки переключения 7/30 дней
-document.getElementById("hist-7").addEventListener("click", () => loadMealsHistory(7));
-document.getElementById("hist-30").addEventListener("click", () => loadMealsHistory(30));
-
 // ===== ПОИСК ПРОДУКТОВ =====
 const foodSearchInput = document.getElementById("food-search");
 const foodDropdown = document.getElementById("food-dropdown");
@@ -650,7 +619,6 @@ foodSearchInput.addEventListener("input", () => {
   }, 250);
 });
 
-// Клик вне поля — закрыть подсказки
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".food-search-wrap")) {
     foodDropdown.innerHTML = "";
@@ -666,18 +634,18 @@ function pickFood(ds) {
   form.fat.value = ds.f;
   form.carbs.value = ds.c;
 
-  // Сохраняем базовые значения (на 100 г) для пересчёта
   form.calories.dataset.base = ds.cal;
   form.protein.dataset.base = ds.p;
   form.fat.dataset.base = ds.f;
   form.carbs.dataset.base = ds.c;
 
   foodSearchInput.value = "";
-  foodDropdown.innerHTML = "";}
-  // Пересчёт КБЖУ при изменении граммов
+  foodDropdown.innerHTML = "";
+}
+
+// Пересчёт КБЖУ при изменении граммов
 const mealForm = document.getElementById("meal-form");
 mealForm.grams.addEventListener("input", recalcMacros);
-
 
 function recalcMacros() {
   const form = document.getElementById("meal-form");
@@ -694,6 +662,7 @@ function recalcMacros() {
   form.fat.value = (baseF * k).toFixed(1);
   form.carbs.value = (baseC * k).toFixed(1);
 }
+
 document.getElementById("meal-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -711,9 +680,9 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
     }),
   });
   f.reset();
-   loadMeals();
-  loadMealsHistory();
+  loadMeals();
 });
+
 // ===== КНОПКА "ИЗМЕНИТЬ ПРОФИЛЬ" =====
 document.getElementById("edit-profile").addEventListener("click", () => {
   if (confirm("Изменить профиль? Потребуется заполнить анкету заново.")) {
