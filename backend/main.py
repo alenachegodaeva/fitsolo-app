@@ -865,3 +865,163 @@ def pin_photo(photo_id: int, authorization: Optional[str] = Header(None)):
     db.commit()
     db.close()
     return {"ok": True}
+    # ===== КАЛЕНДАРЬ ТРЕНИРОВОК =====
+
+@app.get("/api/calendar/{user_id}")
+def get_calendar(
+    user_id: int,
+    year: int,
+    month: int,
+    authorization: Optional[str] = Header(None),
+):
+    """Возвращает сводку по дням месяца: тренировки / питание / фото / калории."""
+    check_own(authorization, user_id)
+
+    # Границы месяца
+    start = datetime(year, month, 1)
+    if month == 12:
+        end = datetime(year + 1, 1, 1)
+    else:
+        end = datetime(year, month + 1, 1)
+
+    db = SessionLocal()
+
+    workouts = (
+        db.query(WorkoutLog)
+        .filter(WorkoutLog.user_id == user_id,
+                WorkoutLog.date >= start, WorkoutLog.date < end)
+        .all()
+    )
+    meals = (
+        db.query(Meal)
+        .filter(Meal.user_id == user_id,
+                Meal.date >= start, Meal.date < end)
+        .all()
+    )
+    photos = (
+        db.query(ProgressPhoto)
+        .filter(ProgressPhoto.user_id == user_id,
+                ProgressPhoto.date >= start, ProgressPhoto.date < end)
+        .all()
+    )
+    db.close()
+
+    # Собираем словарь по дням
+    days = {}
+
+    def ensure(day_key):
+        if day_key not in days:
+            days[day_key] = {
+                "workouts": 0, "meals": 0, "photos": 0, "calories": 0,
+            }
+
+    for w in workouts:
+        key = w.date.date().isoformat()
+        ensure(key)
+        days[key]["workouts"] += 1
+
+    for m in meals:
+        key = m.date.date().isoformat()
+        ensure(key)
+        days[key]["meals"] += 1
+        days[key]["calories"] += int(round(m.calories or 0))
+
+    for p in photos:
+        key = p.date.date().isoformat()
+        ensure(key)
+        days[key]["photos"] += 1
+
+    return {
+        "year": year,
+        "month": month,
+        "days": days,
+    }
+
+
+@app.get("/api/day/{user_id}")
+def get_day(
+    user_id: int,
+    date: str,  # YYYY-MM-DD
+    authorization: Optional[str] = Header(None),
+):
+    """Возвращает детали одного дня: тренировки, еда, фото."""
+    check_own(authorization, user_id)
+
+    try:
+        d = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "Неверный формат даты (ожидается YYYY-MM-DD)")
+
+    start = datetime(d.year, d.month, d.day)
+    end = start + timedelta(days=1)
+
+    db = SessionLocal()
+
+    workouts = (
+        db.query(WorkoutLog)
+        .filter(WorkoutLog.user_id == user_id,
+                WorkoutLog.date >= start, WorkoutLog.date < end)
+        .order_by(WorkoutLog.date.asc())
+        .all()
+    )
+    meals = (
+        db.query(Meal)
+        .filter(Meal.user_id == user_id,
+                Meal.date >= start, Meal.date < end)
+        .order_by(Meal.date.asc())
+        .all()
+    )
+    photos = (
+        db.query(ProgressPhoto)
+        .filter(ProgressPhoto.user_id == user_id,
+                ProgressPhoto.date >= start, ProgressPhoto.date < end)
+        .order_by(ProgressPhoto.date.asc())
+        .all()
+    )
+    db.close()
+
+    total_calories = sum(int(round(m.calories or 0)) for m in meals)
+    total_protein = round(sum(m.protein or 0 for m in meals), 1)
+    total_fat = round(sum(m.fat or 0 for m in meals), 1)
+    total_carbs = round(sum(m.carbs or 0 for m in meals), 1)
+
+    return {
+        "date": date,
+        "workouts": [
+            {
+                "id": w.id,
+                "exercise": w.exercise,
+                "weight": w.weight,
+                "reps": w.reps,
+                "sets": w.sets,
+            }
+            for w in workouts
+        ],
+        "meals": [
+            {
+                "id": m.id,
+                "name": m.name,
+                "grams": m.grams,
+                "calories": m.calories,
+                "protein": m.protein,
+                "fat": m.fat,
+                "carbs": m.carbs,
+            }
+            for m in meals
+        ],
+        "nutrition_totals": {
+            "calories": total_calories,
+            "protein": total_protein,
+            "fat": total_fat,
+            "carbs": total_carbs,
+        },
+        "photos": [
+            {
+                "id": p.id,
+                "url": f"/uploads/{p.filename}",
+                "weight": p.weight,
+                "note": p.note,
+            }
+            for p in photos
+        ],
+    }
