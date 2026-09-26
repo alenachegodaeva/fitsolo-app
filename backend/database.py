@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -64,6 +64,17 @@ class Meal(Base):
     protein = Column(Float)
     fat = Column(Float)
     carbs = Column(Float)
+
+
+class ProgressPhoto(Base):
+    __tablename__ = "progress_photos"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    filename = Column(String, nullable=False)      # имя файла в uploads/
+    date = Column(DateTime, default=datetime.utcnow)
+    weight = Column(Float, nullable=True)          # вес на момент фото
+    note = Column(Text, nullable=True)             # заметка
+    is_pinned = Column(Boolean, default=False)     # закреплённое (главное) фото
 
 
 def init_db():

@@ -1,15 +1,20 @@
 import json
-from fastapi import FastAPI, HTTPException
+import os
+import shutil
+import uuid
+from datetime import datetime, timedelta
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal
-import os 
+from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
 from auth import hash_password, verify_password, create_token, get_user_id_from_token
-from fastapi import Header
 
 app = FastAPI(title="FitSolo API")
 
@@ -27,6 +32,11 @@ async def add_pwa_headers(request, call_next):
     return response
 
 init_db()
+
+# ===== ПАПКА ДЛЯ ФОТО =====
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 # ===== PYDANTIC-МОДЕЛИ =====
@@ -68,6 +78,26 @@ class MealIn(BaseModel):
     fat: float
     carbs: float
 
+
+class RegisterIn(BaseModel):
+    email: str
+    password: str
+    name: str
+    gender: str
+    age: int
+    weight: float
+    height: float
+    experience: str
+    goal: str
+    days_per_week: int
+    equipment: List[str]
+    injuries: List[str] = []
+    link_user_id: Optional[int] = None
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
 
 
 # ===== ПРОФИЛЬ =====
@@ -323,18 +353,12 @@ def get_nutrition(user_id: int):
     }
 
 
-
-
 # ===== БАЗА ПРОДУКТОВ =====
 
 @app.get("/api/foods")
 def search_foods(q: str = ""):
-    """Поиск продуктов по названию. Если q пустой — вернуть первые 30."""
-    import json as _json
-    from pathlib import Path
-
     path = Path(__file__).parent / "foods.json"
-    foods = _json.loads(path.read_text(encoding="utf-8"))
+    foods = json.loads(path.read_text(encoding="utf-8"))
 
     if q:
         q_lower = q.lower()
@@ -343,14 +367,10 @@ def search_foods(q: str = ""):
     return foods[:30]
 
 
-
 # ===== БАЗА УПРАЖНЕНИЙ =====
 
 @app.get("/api/exercises")
 def get_exercises(q: str = "", limit: int = 200):
-    """Поиск упражнений по названию. Если q пустой — вернуть первые N."""
-    from pathlib import Path
-
     path = Path(__file__).parent / "exercises.json"
     exercises = json.loads(path.read_text(encoding="utf-8"))
 
@@ -359,13 +379,10 @@ def get_exercises(q: str = "", limit: int = 200):
         exercises = [e for e in exercises if q_lower in e["name"].lower()]
 
     return exercises[:limit]
-   
+
 
 @app.get("/api/meals/history/{user_id}")
 def get_meals_history(user_id: int, days: int = 7):
-    """Возвращает приёмы пищи за последние N дней, сгруппированные по датам."""
-    from datetime import datetime, timedelta
-
     db = SessionLocal()
     cutoff = datetime.utcnow() - timedelta(days=days)
     rows = (
@@ -376,18 +393,13 @@ def get_meals_history(user_id: int, days: int = 7):
     )
     db.close()
 
-    # Группируем по дате (YYYY-MM-DD)
     by_day = {}
     for r in rows:
         day = r.date.date().isoformat()
         if day not in by_day:
             by_day[day] = {
-                "date": day,
-                "calories": 0,
-                "protein": 0,
-                "fat": 0,
-                "carbs": 0,
-                "meals_count": 0,
+                "date": day, "calories": 0, "protein": 0,
+                "fat": 0, "carbs": 0, "meals_count": 0,
             }
         by_day[day]["calories"] += r.calories or 0
         by_day[day]["protein"] += r.protein or 0
@@ -395,7 +407,6 @@ def get_meals_history(user_id: int, days: int = 7):
         by_day[day]["carbs"] += r.carbs or 0
         by_day[day]["meals_count"] += 1
 
-    # Заполняем пропущенные дни нулями
     result = []
     today = datetime.utcnow().date()
     for i in range(days - 1, -1, -1):
@@ -413,7 +424,6 @@ def get_meals_history(user_id: int, days: int = 7):
                 "fat": 0, "carbs": 0, "meals_count": 0,
             })
 
-    # Средние значения по дням, где что-то ели
     days_with_food = [r for r in result if r["meals_count"] > 0]
     if days_with_food:
         avg = {
@@ -426,49 +436,25 @@ def get_meals_history(user_id: int, days: int = 7):
     else:
         avg = {"calories": 0, "protein": 0, "fat": 0, "carbs": 0, "days_tracked": 0}
 
-    return {"days": result, "average": avg} 
+    return {"days": result, "average": avg}
 
 
 # ===== АВТОРИЗАЦИЯ =====
 
-class RegisterIn(BaseModel):
-    email: str
-    password: str
-    name: str
-    gender: str
-    age: int
-    weight: float
-    height: float
-    experience: str
-    goal: str
-    days_per_week: int
-    equipment: List[str]
-    injuries: List[str] = []
-    link_user_id: Optional[int] = None  # привязать старый профиль
-
-
-class LoginIn(BaseModel):
-    email: str
-    password: str
-
-
 @app.post("/api/register")
 def register(r: RegisterIn):
     db = SessionLocal()
-    
-    # Проверка что email не занят
+
     existing = db.query(User).filter_by(email=r.email.lower()).first()
     if existing:
         db.close()
         raise HTTPException(400, "Этот email уже зарегистрирован")
-    
-    # Если пользователь просит привязать старый профиль
+
     if r.link_user_id:
         user = db.query(User).get(r.link_user_id)
         if not user:
             db.close()
             raise HTTPException(404, "Старый профиль не найден")
-        # Обновляем существующего
         user.email = r.email.lower()
         user.password_hash = hash_password(r.password)
         user.name = r.name
@@ -482,7 +468,6 @@ def register(r: RegisterIn):
         user.equipment = json.dumps(r.equipment)
         user.injuries = json.dumps(r.injuries)
     else:
-        # Создаём нового
         user = User(
             email=r.email.lower(),
             password_hash=hash_password(r.password),
@@ -494,12 +479,12 @@ def register(r: RegisterIn):
             injuries=json.dumps(r.injuries),
         )
         db.add(user)
-    
+
     db.commit()
     db.refresh(user)
     user_id = user.id
     db.close()
-    
+
     return {
         "token": create_token(user_id),
         "user_id": user_id,
@@ -511,10 +496,10 @@ def login(l: LoginIn):
     db = SessionLocal()
     user = db.query(User).filter_by(email=l.email.lower()).first()
     db.close()
-    
+
     if not user or not verify_password(l.password, user.password_hash):
         raise HTTPException(401, "Неверный email или пароль")
-    
+
     return {
         "token": create_token(user.id),
         "user_id": user.id,
@@ -532,14 +517,10 @@ def get_me(authorization: Optional[str] = Header(None)):
     return get_profile(user_id)
 
 
-
 # ===== ДОСТИЖЕНИЯ =====
 
 @app.get("/api/achievements/{user_id}")
 def get_achievements(user_id: int):
-    """Считает серию и достижения пользователя из дневника и питания."""
-    from datetime import datetime, timedelta
-
     db = SessionLocal()
     user = db.query(User).get(user_id)
     if not user:
@@ -550,8 +531,6 @@ def get_achievements(user_id: int):
     meals = db.query(Meal).filter_by(user_id=user_id).all()
     db.close()
 
-    # === СЕРИЯ (streak) ===
-    # Уникальные дни, где была тренировка ИЛИ приём пищи
     active_dates = set()
     for w in workouts:
         if w.date:
@@ -560,16 +539,13 @@ def get_achievements(user_id: int):
         if m.date:
             active_dates.add(m.date.date())
 
-    # Считаем streak: идём от сегодня назад, пока есть активность
     streak = 0
     today = datetime.utcnow().date()
-    # Если сегодня ещё нет активности — начинаем со вчера (серия не сбрасывается в тот же день)
     check_date = today if today in active_dates else today - timedelta(days=1)
     while check_date in active_dates:
         streak += 1
         check_date -= timedelta(days=1)
 
-    # === ОБЩИЕ МЕТРИКИ ===
     total_workouts = len(workouts)
     total_tonnage = 0
     max_weight = 0
@@ -579,7 +555,6 @@ def get_achievements(user_id: int):
             max_weight = w.weight or 0
     total_tonnage = round(total_tonnage)
 
-    # Прогресс в упражнениях: в скольких упражнениях вес вырос хотя бы 2 раза
     by_exercise = {}
     for w in workouts:
         by_exercise.setdefault(w.exercise, []).append(w.weight or 0)
@@ -587,7 +562,6 @@ def get_achievements(user_id: int):
     for name, weights in by_exercise.items():
         if is_cardio(name):
             continue
-        # Проверяем, есть ли рост хотя бы на 2 шагах
         rises = 0
         for i in range(1, len(weights)):
             if weights[i] > weights[i-1]:
@@ -595,11 +569,9 @@ def get_achievements(user_id: int):
         if rises >= 2:
             progressed_exercises += 1
 
-    # Дней с питанием подряд
     meal_dates = sorted({m.date.date() for m in meals if m.date})
     nutrition_streak = 0
     if meal_dates:
-        # Максимальная серия подряд
         current = 1
         max_streak = 1
         for i in range(1, len(meal_dates)):
@@ -610,94 +582,31 @@ def get_achievements(user_id: int):
                 current = 1
         nutrition_streak = max_streak
 
-    # Уникальные дни питания (для достижения "неделя питания")
     unique_meal_days = len(set(m.date.date() for m in meals if m.date))
 
-    # === СПИСОК ДОСТИЖЕНИЙ ===
     achievements = [
-        {
-            "id": "first_workout",
-            "title": "Первая тренировка",
-            "icon": "🥇",
-            "done": total_workouts >= 1,
-            "progress": min(total_workouts, 1),
-            "target": 1,
-        },
-        {
-            "id": "workouts_10",
-            "title": "10 тренировок",
-            "icon": "💪",
-            "done": total_workouts >= 10,
-            "progress": min(total_workouts, 10),
-            "target": 10,
-        },
-        {
-            "id": "workouts_50",
-            "title": "50 тренировок",
-            "icon": "🏋️",
-            "done": total_workouts >= 50,
-            "progress": min(total_workouts, 50),
-            "target": 50,
-        },
-        {
-            "id": "streak_7",
-            "title": "Серия 7 дней",
-            "icon": "🔥",
-            "done": streak >= 7,
-            "progress": min(streak, 7),
-            "target": 7,
-        },
-        {
-            "id": "streak_30",
-            "title": "Серия 30 дней",
-            "icon": "🔥🔥",
-            "done": streak >= 30,
-            "progress": min(streak, 30),
-            "target": 30,
-        },
-        {
-            "id": "tonnage_100",
-            "title": "100 тонн поднято",
-            "icon": "💯",
-            "done": total_tonnage >= 100000,
-            "progress": min(total_tonnage, 100000),
-            "target": 100000,
-        },
-        {
-            "id": "pr_50kg",
-            "title": "50 кг в подходе",
-            "icon": "🎯",
-            "done": max_weight >= 50,
-            "progress": min(round(max_weight), 50),
-            "target": 50,
-        },
-        {
-            "id": "pr_100kg",
-            "title": "100 кг в подходе",
-            "icon": "🎯🎯",
-            "done": max_weight >= 100,
-            "progress": min(round(max_weight), 100),
-            "target": 100,
-        },
-        {
-            "id": "progress_5",
-            "title": "Прогресс в 5 упражнениях",
-            "icon": "📈",
-            "done": progressed_exercises >= 5,
-            "progress": min(progressed_exercises, 5),
-            "target": 5,
-        },
-        {
-            "id": "nutrition_week",
-            "title": "Неделя питания",
-            "icon": "🍎",
-            "done": unique_meal_days >= 7,
-            "progress": min(unique_meal_days, 7),
-            "target": 7,
-        },
+        {"id": "first_workout", "title": "Первая тренировка", "icon": "🥇",
+         "done": total_workouts >= 1, "progress": min(total_workouts, 1), "target": 1},
+        {"id": "workouts_10", "title": "10 тренировок", "icon": "💪",
+         "done": total_workouts >= 10, "progress": min(total_workouts, 10), "target": 10},
+        {"id": "workouts_50", "title": "50 тренировок", "icon": "🏋️",
+         "done": total_workouts >= 50, "progress": min(total_workouts, 50), "target": 50},
+        {"id": "streak_7", "title": "Серия 7 дней", "icon": "🔥",
+         "done": streak >= 7, "progress": min(streak, 7), "target": 7},
+        {"id": "streak_30", "title": "Серия 30 дней", "icon": "🔥🔥",
+         "done": streak >= 30, "progress": min(streak, 30), "target": 30},
+        {"id": "tonnage_100", "title": "100 тонн поднято", "icon": "💯",
+         "done": total_tonnage >= 100000, "progress": min(total_tonnage, 100000), "target": 100000},
+        {"id": "pr_50kg", "title": "50 кг в подходе", "icon": "🎯",
+         "done": max_weight >= 50, "progress": min(round(max_weight), 50), "target": 50},
+        {"id": "pr_100kg", "title": "100 кг в подходе", "icon": "🎯🎯",
+         "done": max_weight >= 100, "progress": min(round(max_weight), 100), "target": 100},
+        {"id": "progress_5", "title": "Прогресс в 5 упражнениях", "icon": "📈",
+         "done": progressed_exercises >= 5, "progress": min(progressed_exercises, 5), "target": 5},
+        {"id": "nutrition_week", "title": "Неделя питания", "icon": "🍎",
+         "done": unique_meal_days >= 7, "progress": min(unique_meal_days, 7), "target": 7},
     ]
 
-    # === БЕЙДЖИ (для отображения в UI) ===
     earned_badges = [a["icon"] for a in achievements if a["done"]]
 
     return {
@@ -715,9 +624,180 @@ def get_achievements(user_id: int):
 
 
 def is_cardio(name: str) -> bool:
-    """Помощник: определяет, кардио ли это."""
     if not name:
         return False
     n = name.lower()
     return n.startswith("кардио") or n.startswith("заминка") or "растяжка" in n
 
+
+# ===== ФОТО ПРОГРЕССА =====
+
+@app.post("/api/photos/upload")
+async def upload_photo(
+    user_id: int = Form(...),
+    weight: Optional[float] = Form(None),
+    note: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+):
+    """Загружает фото прогресса. Сохраняет в uploads/ с уникальным именем."""
+    # Проверяем пользователя
+    db = SessionLocal()
+    user = db.query(User).get(user_id)
+    if not user:
+        db.close()
+        raise HTTPException(404, "Пользователь не найден")
+
+    # Проверяем тип файла
+    allowed = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in allowed:
+        db.close()
+        raise HTTPException(400, "Допустимы только JPG, PNG, WEBP, HEIC")
+
+    # Уникальное имя: user_1_20260926_153045_ab12cd.jpg
+    stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    uniq = uuid.uuid4().hex[:6]
+    filename = f"user_{user_id}_{stamp}_{uniq}{ext}"
+    dest = UPLOAD_DIR / filename
+
+    # Сохраняем файл
+    try:
+        with dest.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        db.close()
+        raise HTTPException(500, f"Не удалось сохранить файл: {e}")
+    finally:
+        file.file.close()
+
+    # Пишем в БД
+    photo = ProgressPhoto(
+        user_id=user_id,
+        filename=filename,
+        date=datetime.utcnow(),
+        weight=weight,
+        note=note or None,
+        is_pinned=False,
+    )
+    db.add(photo)
+    db.commit()
+    db.refresh(photo)
+    photo_id = photo.id
+    db.close()
+
+    return {
+        "ok": True,
+        "id": photo_id,
+        "filename": filename,
+        "url": f"/uploads/{filename}",
+    }
+
+
+@app.get("/api/photos/{user_id}")
+def list_photos(user_id: int):
+    """Список всех фото пользователя, от новых к старым. Закреплённое — первым."""
+    db = SessionLocal()
+    rows = (
+        db.query(ProgressPhoto)
+        .filter_by(user_id=user_id)
+        .order_by(ProgressPhoto.is_pinned.desc(), ProgressPhoto.date.desc())
+        .all()
+    )
+    db.close()
+    return [
+        {
+            "id": r.id,
+            "filename": r.filename,
+            "url": f"/uploads/{r.filename}",
+            "date": r.date.isoformat(),
+            "weight": r.weight,
+            "note": r.note,
+            "is_pinned": bool(r.is_pinned),
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/photos/{user_id}/stats")
+def photos_stats(user_id: int):
+    """Статистика: всего фото, первое, последнее, разница по весу."""
+    db = SessionLocal()
+    rows = (
+        db.query(ProgressPhoto)
+        .filter_by(user_id=user_id)
+        .order_by(ProgressPhoto.date.asc())
+        .all()
+    )
+    db.close()
+
+    if not rows:
+        return {
+            "count": 0,
+            "first": None,
+            "last": None,
+            "weight_diff": None,
+            "last_date": None,
+        }
+
+    first = rows[0]
+    last = rows[-1]
+    weight_diff = None
+    if first.weight is not None and last.weight is not None:
+        weight_diff = round(last.weight - first.weight, 1)
+
+    return {
+        "count": len(rows),
+        "first": {
+            "id": first.id, "url": f"/uploads/{first.filename}",
+            "date": first.date.isoformat(), "weight": first.weight,
+            "note": first.note,
+        },
+        "last": {
+            "id": last.id, "url": f"/uploads/{last.filename}",
+            "date": last.date.isoformat(), "weight": last.weight,
+            "note": last.note,
+        },
+        "weight_diff": weight_diff,
+        "last_date": last.date.isoformat(),
+    }
+
+
+@app.delete("/api/photos/{photo_id}")
+def delete_photo(photo_id: int):
+    """Удаляет фото из БД и с диска."""
+    db = SessionLocal()
+    photo = db.query(ProgressPhoto).get(photo_id)
+    if not photo:
+        db.close()
+        raise HTTPException(404, "Фото не найдено")
+
+    # Удаляем файл
+    file_path = UPLOAD_DIR / photo.filename
+    if file_path.exists():
+        try:
+            file_path.unlink()
+        except Exception as e:
+            print(f"Не удалось удалить файл {file_path}: {e}")
+
+    db.delete(photo)
+    db.commit()
+    db.close()
+    return {"ok": True}
+
+
+@app.post("/api/photos/{photo_id}/pin")
+def pin_photo(photo_id: int):
+    """Закрепляет фото как главное. Снимает закрепление с остальных фото этого юзера."""
+    db = SessionLocal()
+    photo = db.query(ProgressPhoto).get(photo_id)
+    if not photo:
+        db.close()
+        raise HTTPException(404, "Фото не найдено")
+
+    # Снимаем закрепление со всех фото этого пользователя
+    db.query(ProgressPhoto).filter_by(user_id=photo.user_id).update({"is_pinned": False})
+    # Ставим текущее
+    photo.is_pinned = True
+    db.commit()
+    db.close()
+    return {"ok": True}

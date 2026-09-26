@@ -295,7 +295,7 @@ document.querySelectorAll(".tab[data-tab]").forEach(t => {
     document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
-    if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); }
+        if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); loadPhotos(); }
     if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); }
     if (t.dataset.tab === "log") buildExercisePicker();
   });
@@ -1027,4 +1027,337 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
     loadAchievements();  // ← обновить после еды
     showToast("Приём пищи добавлен ✓", "success");
   } catch (err) { showToast("Не удалось добавить", "error"); }
+
+// ============================================================
+// ===== ФОТО ПРОГРЕССА =======================================
+// ============================================================
+
+let photosCache = [];        // массив всех фото пользователя
+let sliderIndex = 0;         // текущий индекс в слайдере
+let pendingPhotoBlob = null; // сжатый файл, ждёт отправки
+let lastPhotoNotifyCheck = 0;
+
+// ----- Загрузка списка фото -----
+async function loadPhotos() {
+  if (!userId) return;
+  try {
+    const res = await apiFetch(`/api/photos/${userId}`);
+    photosCache = await res.json();
+    renderPhotosSummary(photosCache);
+    renderPhotosTimeline(photosCache);
+    checkWeeklyPhotoReminder(photosCache);
+  } catch (err) {
+    console.warn("Не удалось загрузить фото:", err);
+  }
+}
+
+// ----- Сводка (первое / последнее / разница веса) -----
+function renderPhotosSummary(photos) {
+  const el = document.getElementById("photos-summary");
+  if (!el) return;
+
+  if (!photos.length) {
+    el.innerHTML = "";
+    return;
+  }
+
+  // Берём самое старое и самое новое (по дате), но закреплённое показываем отдельно
+  const sorted = [...photos].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const pinned = photos.find(p => p.is_pinned);
+
+  let weightHtml = "";
+  if (first.weight != null && last.weight != null && first.id !== last.id) {
+    const diff = +(last.weight - first.weight).toFixed(1);
+    const sign = diff > 0 ? "+" : "";
+    const cls = diff < 0 ? "down" : diff > 0 ? "up" : "";
+    weightHtml = `<div class="photos-diff ${cls}">${sign}${diff} кг</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="photos-summary-row">
+      <div class="photos-summary-item">
+        <div class="photos-summary-label">Всего фото</div>
+        <div class="photos-summary-value">${photos.length}</div>
+      </div>
+      <div class="photos-summary-item">
+        <div class="photos-summary-label">Старт</div>
+        <div class="photos-summary-value">${first.weight != null ? first.weight + " кг" : "—"}</div>
+      </div>
+      <div class="photos-summary-item">
+        <div class="photos-summary-label">Сейчас</div>
+        <div class="photos-summary-value">${last.weight != null ? last.weight + " кг" : "—"}</div>
+      </div>
+      ${weightHtml ? `<div class="photos-summary-item">${weightHtml}</div>` : ""}
+    </div>
+    ${pinned ? `<div class="photos-pinned-hint">📌 Закреплено: ${formatPhotoDate(pinned.date)}</div>` : ""}
+  `;
+}
+
+// ----- Timeline (горизонтальная лента миниатюр) -----
+function renderPhotosTimeline(photos) {
+  const el = document.getElementById("photos-timeline");
+  const emptyEl = document.getElementById("photos-empty");
+  if (!el || !emptyEl) return;
+
+  if (!photos.length) {
+    el.innerHTML = "";
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+
+  el.innerHTML = photos.map((p, i) => `
+    <div class="photo-thumb ${p.is_pinned ? "pinned" : ""}" data-index="${i}">
+      <img src="${API}${p.url}" alt="Фото ${i + 1}" loading="lazy">
+      <div class="photo-thumb-date">${formatPhotoDate(p.date)}</div>
+      ${p.is_pinned ? `<div class="photo-thumb-pin">📌</div>` : ""}
+    </div>
+  `).join("");
+
+  el.querySelectorAll(".photo-thumb").forEach(thumb => {
+    thumb.addEventListener("click", () => {
+      sliderIndex = +thumb.dataset.index;
+      openSlider(sliderIndex);
+    });
+  });
+}
+
+// ----- Формат даты для фото -----
+function formatPhotoDate(iso) {
+  const d = new Date(iso);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dd = new Date(d); dd.setHours(0,0,0,0);
+  const diffDays = Math.round((today - dd) / 86400000);
+  if (diffDays === 0) return "Сегодня";
+  if (diffDays === 1) return "Вчера";
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+// ============================================================
+// ===== МОДАЛКА ЗАГРУЗКИ =====================================
+// ============================================================
+
+const photoModal = document.getElementById("photo-modal");
+const photoInput = document.getElementById("photo-input");
+const photoPreview = document.getElementById("photo-preview");
+const photoPreviewPlaceholder = document.getElementById("photo-preview-placeholder");
+const photoUploadView = document.getElementById("photo-upload-view");
+const photoViewView = document.getElementById("photo-view-view");
+const photoWeightInput = document.getElementById("photo-weight");
+const photoNoteInput = document.getElementById("photo-note");
+const photoSaveBtn = document.getElementById("photo-save");
+
+document.getElementById("photo-add-btn").addEventListener("click", openPhotoUpload);
+document.getElementById("photo-modal-close").addEventListener("click", closePhotoModal);
+
+function openPhotoUpload() {
+  pendingPhotoBlob = null;
+  photoPreview.src = "";
+  photoPreview.style.display = "none";
+  photoPreviewPlaceholder.style.display = "flex";
+  photoWeightInput.value = "";
+  photoNoteInput.value = "";
+  photoUploadView.style.display = "block";
+  photoViewView.style.display = "none";
+  photoModal.style.display = "flex";
+}
+
+function closePhotoModal() {
+  photoModal.style.display = "none";
+  pendingPhotoBlob = null;
+}
+
+// --- Камера ---
+document.getElementById("photo-pick-camera").addEventListener("click", () => {
+  photoInput.setAttribute("capture", "environment");
+  photoInput.click();
+});
+
+// --- Галерея ---
+document.getElementById("photo-pick-gallery").addEventListener("click", () => {
+  photoInput.removeAttribute("capture");
+  photoInput.click();
+});
+
+// --- Выбор файла + сжатие ---
+photoInput.addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    pendingPhotoBlob = await compressImage(file, 1280, 0.82);
+    photoPreview.src = URL.createObjectURL(pendingPhotoBlob);
+    photoPreview.style.display = "block";
+    photoPreviewPlaceholder.style.display = "none";
+  } catch (err) {
+    showToast("Не удалось обработать фото", "error");
+    console.error(err);
+  }
+  photoInput.value = "";
+});
+
+// --- Сжатие фото через canvas ---
+function compressImage(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (ev) => { img.src = ev.target.result; };
+    reader.onerror = reject;
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxSize) {
+        height = Math.round(height * (maxSize / width));
+        width = maxSize;
+      } else if (height >= width && height > maxSize) {
+        width = Math.round(width * (maxSize / height));
+        height = maxSize;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- Сохранение на сервер ---
+photoSaveBtn.addEventListener("click", async () => {
+  if (!pendingPhotoBlob) {
+    showToast("Сначала выбери фото", "error");
+    return;
+  }
+  photoSaveBtn.disabled = true;
+  photoSaveBtn.textContent = "Сохраняю...";
+
+  const fd = new FormData();
+  fd.append("user_id", String(userId));
+  fd.append("file", pendingPhotoBlob, `photo_${Date.now()}.jpg`);
+  if (photoWeightInput.value) fd.append("weight", photoWeightInput.value);
+  if (photoNoteInput.value.trim()) fd.append("note", photoNoteInput.value.trim());
+
+  try {
+    const res = await apiFetch(`/api/photos/upload`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) throw new Error("upload failed");
+    closePhotoModal();
+    showToast("Фото добавлено ✓", "success");
+    await loadPhotos();
+  } catch (err) {
+    showToast("Не удалось загрузить фото", "error");
+    console.error(err);
+  } finally {
+    photoSaveBtn.disabled = false;
+    photoSaveBtn.textContent = "Сохранить";
+  }
+});
+
+// ============================================================
+// ===== ПОЛНОЭКРАННЫЙ СЛАЙДЕР ================================
+// ============================================================
+
+const slider = document.getElementById("photo-slider");
+const sliderImg = document.getElementById("slider-img");
+const sliderDate = document.getElementById("slider-date");
+const sliderWeight = document.getElementById("slider-weight");
+const sliderNote = document.getElementById("slider-note");
+const sliderThumbs = document.getElementById("slider-thumbs");
+
+document.getElementById("slider-close").addEventListener("click", closeSlider);
+document.getElementById("slider-prev").addEventListener("click", () => moveSlider(-1));
+document.getElementById("slider-next").addEventListener("click", () => moveSlider(1));
+
+function openSlider(index) {
+  if (!photosCache.length) return;
+  sliderIndex = Math.max(0, Math.min(index, photosCache.length - 1));
+  slider.style.display = "flex";
+  renderSlider();
+}
+
+function closeSlider() {
+  slider.style.display = "none";
+}
+
+function moveSlider(delta) {
+  if (!photosCache.length) return;
+  sliderIndex = (sliderIndex + delta + photosCache.length) % photosCache.length;
+  renderSlider();
+}
+
+function renderSlider() {
+  const p = photosCache[sliderIndex];
+  if (!p) return;
+  sliderImg.src = `${API}${p.url}`;
+  sliderDate.textContent = new Date(p.date).toLocaleDateString("ru-RU", {
+    day: "numeric", month: "long", year: "numeric"
+  });
+  sliderWeight.textContent = p.weight != null ? `⚖️ ${p.weight} кг` : "";
+  sliderNote.textContent = p.note || "";
+
+  // Миниатюры снизу
+  sliderThumbs.innerHTML = photosCache.map((ph, i) => `
+    <div class="slider-thumb ${i === sliderIndex ? "active" : ""}" data-i="${i}">
+      <img src="${API}${ph.url}" alt="" loading="lazy">
+    </div>
+  `).join("");
+  sliderThumbs.querySelectorAll(".slider-thumb").forEach(t => {
+    t.addEventListener("click", () => {
+      sliderIndex = +t.dataset.i;
+      renderSlider();
+    });
+    // Прокрутить активную миниатюру в вид
+    if (+t.dataset.i === sliderIndex) {
+      t.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  });
+}
+
+// Свайпы на слайдере (мобилки)
+let touchStartX = 0;
+slider.addEventListener("touchstart", (e) => {
+  touchStartX = e.touches[0].clientX;
+}, { passive: true });
+slider.addEventListener("touchend", (e) => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) moveSlider(dx < 0 ? 1 : -1);
+});
+
+// Стрелки клавиатуры
+document.addEventListener("keydown", (e) => {
+  if (slider.style.display === "flex") {
+    if (e.key === "ArrowLeft") moveSlider(-1);
+    if (e.key === "ArrowRight") moveSlider(1);
+    if (e.key === "Escape") closeSlider();
+  }
+});
+
+// ============================================================
+// ===== НАПОМИНАНИЕ «ПОРА СДЕЛАТЬ ФОТО» ======================
+// ============================================================
+
+function checkWeeklyPhotoReminder(photos) {
+  if (!photos.length) return;
+  const last = photos.reduce((a, b) => new Date(a.date) > new Date(b.date) ? a : b);
+  const daysSince = Math.floor((Date.now() - new Date(last.date).getTime()) / 86400000);
+  if (daysSince < 7) return;
+
+  // Чтобы не спамить — раз в сутки
+  const lastNotify = +localStorage.getItem("lastPhotoNotify") || 0;
+  if (Date.now() - lastNotify < 86400000) return;
+
+  localStorage.setItem("lastPhotoNotify", String(Date.now()));
+  setTimeout(() => {
+    showToast("📸 Пора сделать новое фото прогресса!", "success");
+  }, 1500);
+}
 });

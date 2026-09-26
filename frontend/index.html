@@ -190,10 +190,24 @@
       <div id="logs-list"></div>
     </div>
 
-    <!-- ПРОГРЕСС -->
+        <!-- ПРОГРЕСС -->
     <div id="tab-stats" class="tab-content">
       <div id="achievements-block"></div>
-      <div id="stats-content" style="margin-top:24px;">
+
+      <!-- 📸 ПРОГРЕСС ТЕЛА -->
+      <div id="photos-block" style="margin-top:28px;">
+        <div class="photos-header">
+          <h3>📸 Прогресс тела</h3>
+          <button id="photo-add-btn" class="btn-secondary">+ Добавить</button>
+        </div>
+        <div id="photos-summary" class="photos-summary"></div>
+        <div id="photos-timeline" class="photos-timeline"></div>
+        <div id="photos-empty" class="hint" style="display:none;">
+          Пока нет фото. Нажми «+ Добавить», чтобы начать отслеживать прогресс 📸
+        </div>
+      </div>
+
+      <div id="stats-content" style="margin-top:28px;">
         <p class="hint">Добавь записи в дневник, чтобы увидеть статистику 📈</p>
       </div>
     </div>
@@ -241,6 +255,67 @@
   </section>
 
   <div id="toast-container"></div>
+    <!-- Скрытый input для выбора фото: камера + галерея -->
+  <input type="file" id="photo-input" accept="image/*" style="display:none;">
+
+  <!-- Модалка загрузки/просмотра фото -->
+  <div id="photo-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+      <button id="photo-modal-close" class="modal-close">✕</button>
+
+      <!-- Режим загрузки -->
+      <div id="photo-upload-view">
+        <h3>📸 Новое фото</h3>
+        <div id="photo-preview-wrap" class="photo-preview-wrap">
+          <img id="photo-preview" alt="Превью" style="display:none;">
+          <div id="photo-preview-placeholder" class="photo-preview-placeholder">
+            Выбери фото
+          </div>
+        </div>
+        <div class="photo-pick-buttons">
+          <button id="photo-pick-camera" class="btn-secondary" type="button">📷 Камера</button>
+          <button id="photo-pick-gallery" class="btn-secondary" type="button">🖼 Галерея</button>
+        </div>
+        <input id="photo-weight" type="number" min="20" step="0.1" placeholder="Вес (кг) — необязательно">
+        <input id="photo-note" placeholder="Заметка — необязательно">
+        <button id="photo-save" type="button">Сохранить</button>
+      </div>
+
+      <!-- Режим просмотра (одно фото крупно) -->
+      <div id="photo-view-view" style="display:none;">
+        <img id="photo-view-img" alt="Фото прогресса" class="photo-view-img">
+        <div class="photo-view-meta">
+          <div id="photo-view-date"></div>
+          <div id="photo-view-weight"></div>
+          <div id="photo-view-note"></div>
+        </div>
+        <div class="photo-view-actions">
+          <button id="photo-pin" class="btn-secondary" type="button">📌 Закрепить</button>
+          <button id="photo-delete" class="btn-secondary danger" type="button">🗑 Удалить</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Модалка просмотра на весь экран (fullscreen слайдер) -->
+  <div id="photo-slider" class="slider-overlay" style="display:none;">
+    <button id="slider-close" class="slider-close">✕</button>
+    <button id="slider-prev" class="slider-nav slider-prev">‹</button>
+    <button id="slider-next" class="slider-nav slider-next">›</button>
+
+    <div class="slider-stage">
+      <img id="slider-img" alt="Фото прогресса" class="slider-img">
+    </div>
+
+    <div class="slider-meta">
+      <div id="slider-date" class="slider-date"></div>
+      <div id="slider-weight" class="slider-weight"></div>
+      <div id="slider-note" class="slider-note"></div>
+    </div>
+
+    <div id="slider-thumbs" class="slider-thumbs"></div>
+  </div>
 
   <script src="app2.js"></script>
   <script>
