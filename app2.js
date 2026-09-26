@@ -2,7 +2,7 @@ const API = "https://103.76.53.84.nip.io";
 
 // ===== ХРАНИЛИЩЕ =====
 let token = localStorage.getItem("token");
-let userId = localStorage.getItem("userId"); // для миграции со старой версии
+let userId = localStorage.getItem("userId");
 let chatHistory = [];
 let statsCharts = [];
 let currentPlan = null;
@@ -16,7 +16,6 @@ async function apiFetch(path, options = {}) {
   }
   const res = await fetch(`${API}${path}`, opts);
   if (res.status === 401) {
-    // Токен истёк — на экран логина
     logout();
     throw new Error("unauthorized");
   }
@@ -57,7 +56,6 @@ function updateWeightPlaceholder(exerciseName) {
   input.placeholder = (exerciseName && isCardio(exerciseName)) ? "Минуты" : "Вес (кг)";
 }
 
-// Запрет минуса в number-полях
 document.addEventListener("input", (e) => {
   if (e.target.type === "number" && e.target.value.startsWith("-")) {
     e.target.value = e.target.value.slice(1);
@@ -86,7 +84,6 @@ function logout() {
   showScreen("auth");
 }
 
-// Переключение табов Вход / Регистрация
 document.getElementById("auth-tab-login").addEventListener("click", () => {
   document.getElementById("auth-tab-login").classList.add("active");
   document.getElementById("auth-tab-register").classList.remove("active");
@@ -101,7 +98,6 @@ document.getElementById("auth-tab-register").addEventListener("click", () => {
   document.getElementById("login-form").style.display = "none";
 });
 
-// === ФОРМА ВХОДА ===
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -131,7 +127,6 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   }
 });
 
-// === ФОРМА РЕГИСТРАЦИИ ===
 document.getElementById("register-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -153,7 +148,6 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
     injuries,
   };
 
-  // Предложить привязать старый профиль, если он есть
   const oldId = localStorage.getItem("userId");
   if (oldId && !localStorage.getItem("token")) {
     if (confirm("Нашли старый профиль на этом устройстве. Привязать его к аккаунту, чтобы сохранить историю?")) {
@@ -184,7 +178,6 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
   }
 });
 
-// === КНОПКА ВЫЙТИ ===
 document.getElementById("logout-btn").addEventListener("click", () => {
   if (confirm("Выйти из аккаунта?")) {
     logout();
@@ -192,7 +185,6 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   }
 });
 
-// === ИЗМЕНИТЬ ПРОФИЛЬ ===
 document.getElementById("edit-profile").addEventListener("click", () => {
   if (confirm("Изменить профиль? Придётся заполнить анкету заново.")) {
     showToast("Пока недоступно — используй регистрацию", "error");
@@ -250,11 +242,14 @@ themeToggle.addEventListener("click", () => {
   if (statsCharts.length) loadStats();
 });
 
-// ===== ОНБОРДИНГ (старый — оставим неиспользуемым) =====
-document.getElementById("profile-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  showToast("Используй форму регистрации", "error");
-});
+// ===== СТАРЫЙ ОНБОРДИНГ (не используется) =====
+const profileForm = document.getElementById("profile-form");
+if (profileForm) {
+  profileForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showToast("Используй форму регистрации", "error");
+  });
+}
 
 // ===== ПОКАЗ ОСНОВНОГО ЭКРАНА =====
 async function showMain() {
@@ -279,7 +274,6 @@ async function loadProfileName() {
 
 // ===== СТАРТ =====
 if (token) {
-  // Проверим, что токен валидный
   apiFetch(`/api/me`)
     .then(res => res.ok ? showMain() : logout())
     .catch(() => logout());
@@ -295,7 +289,7 @@ document.querySelectorAll(".tab[data-tab]").forEach(t => {
     document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
-        if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); loadPhotos(); }
+    if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); loadPhotos(); }
     if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); }
     if (t.dataset.tab === "log") buildExercisePicker();
   });
@@ -345,7 +339,6 @@ function formatSplit(split) {
   return map[split] || split;
 }
 
-// ===== ПЕРЕСОЗДАТЬ =====
 document.getElementById("regen-btn").addEventListener("click", () => {
   if (confirm("Пересоздать программу? Текущая будет заменена.")) {
     loadPlan();
@@ -353,7 +346,6 @@ document.getElementById("regen-btn").addEventListener("click", () => {
   }
 });
 
-// ===== ЭКСПОРТ PDF =====
 document.getElementById("export-btn").addEventListener("click", () => {
   if (!currentPlan) return;
   const w = window.open("", "_blank");
@@ -503,7 +495,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
     document.querySelectorAll(".exercise-chip").forEach(c => c.classList.remove("active"));
     updateWeightPlaceholder("");
     await loadLogs();
-    loadAchievements();  // ← обновить достижения после тренировки
+    loadAchievements();
     const firstItem = document.querySelector(".log-item");
     if (firstItem) {
       firstItem.classList.add("just-added");
@@ -778,6 +770,7 @@ async function loadStats() {
     statsCharts.push(chart);
   });
 }
+
 // ===== ДОСТИЖЕНИЯ =====
 let achievementsCache = null;
 let lastEarnedCount = parseInt(localStorage.getItem("lastEarnedCount") || "0");
@@ -788,15 +781,10 @@ async function loadAchievements() {
     const data = await res.json();
     achievementsCache = data;
 
-    // Обновляем streak в шапке
     renderStreakBadge(data.streak, data.earned_count);
-
-    // Обновляем блок на «Прогресс»
     renderAchievements(data);
 
-    // Проверяем новые достижения
     if (data.earned_count > lastEarnedCount) {
-      const diff = data.earned_count - lastEarnedCount;
       showToast(`🏆 Новое достижение! (${data.earned_count}/${data.achievements.length})`, "success");
       localStorage.setItem("lastEarnedCount", String(data.earned_count));
       lastEarnedCount = data.earned_count;
@@ -1024,20 +1012,61 @@ document.getElementById("meal-form").addEventListener("submit", async (e) => {
     });
     f.reset();
     loadMeals();
-    loadAchievements();  // ← обновить после еды
+    loadAchievements();
     showToast("Приём пищи добавлен ✓", "success");
   } catch (err) { showToast("Не удалось добавить", "error"); }
+});
 
 // ============================================================
 // ===== ФОТО ПРОГРЕССА =======================================
 // ============================================================
 
-let photosCache = [];        // массив всех фото пользователя
-let sliderIndex = 0;         // текущий индекс в слайдере
-let pendingPhotoBlob = null; // сжатый файл, ждёт отправки
-let lastPhotoNotifyCheck = 0;
+let photosCache = [];
+let sliderIndex = 0;
+let pendingPhotoBlob = null;
 
-// ----- Загрузка списка фото -----
+// --- Получаем оба input ---
+const cameraInput = document.getElementById("photo-input-camera");
+const galleryInput = document.getElementById("photo-input-gallery");
+
+// --- Клик по кнопке «📷 Камера» ---
+const btnCamera = document.getElementById("photo-pick-camera");
+if (btnCamera && cameraInput) {
+  btnCamera.addEventListener("click", (e) => {
+    e.preventDefault();
+    cameraInput.click();
+  });
+}
+
+// --- Клик по кнопке «🖼 Галерея» ---
+const btnGallery = document.getElementById("photo-pick-gallery");
+if (btnGallery && galleryInput) {
+  btnGallery.addEventListener("click", (e) => {
+    e.preventDefault();
+    galleryInput.click();
+  });
+}
+
+// --- Обработка выбранного фото (общая для камеры и галереи) ---
+async function handlePhotoPick(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    pendingPhotoBlob = await compressImage(file, 1280, 0.82);
+    photoPreview.src = URL.createObjectURL(pendingPhotoBlob);
+    photoPreview.style.display = "block";
+    photoPreviewPlaceholder.style.display = "none";
+  } catch (err) {
+    showToast("Не удалось обработать фото", "error");
+    console.error(err);
+  }
+  e.target.value = "";
+}
+
+if (cameraInput) cameraInput.addEventListener("change", handlePhotoPick);
+if (galleryInput) galleryInput.addEventListener("change", handlePhotoPick);
+
+// --- Загрузка списка фото ---
 async function loadPhotos() {
   if (!userId) return;
   try {
@@ -1051,7 +1080,7 @@ async function loadPhotos() {
   }
 }
 
-// ----- Сводка (первое / последнее / разница веса) -----
+// --- Сводка ---
 function renderPhotosSummary(photos) {
   const el = document.getElementById("photos-summary");
   if (!el) return;
@@ -1061,7 +1090,6 @@ function renderPhotosSummary(photos) {
     return;
   }
 
-  // Берём самое старое и самое новое (по дате), но закреплённое показываем отдельно
   const sorted = [...photos].sort((a, b) => new Date(a.date) - new Date(b.date));
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
@@ -1095,7 +1123,7 @@ function renderPhotosSummary(photos) {
   `;
 }
 
-// ----- Timeline (горизонтальная лента миниатюр) -----
+// --- Timeline ---
 function renderPhotosTimeline(photos) {
   const el = document.getElementById("photos-timeline");
   const emptyEl = document.getElementById("photos-empty");
@@ -1124,7 +1152,6 @@ function renderPhotosTimeline(photos) {
   });
 }
 
-// ----- Формат даты для фото -----
 function formatPhotoDate(iso) {
   const d = new Date(iso);
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1135,12 +1162,8 @@ function formatPhotoDate(iso) {
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-// ============================================================
-// ===== МОДАЛКА ЗАГРУЗКИ =====================================
-// ============================================================
-
+// --- Модалка ---
 const photoModal = document.getElementById("photo-modal");
-const photoInput = document.getElementById("photo-input");
 const photoPreview = document.getElementById("photo-preview");
 const photoPreviewPlaceholder = document.getElementById("photo-preview-placeholder");
 const photoUploadView = document.getElementById("photo-upload-view");
@@ -1149,8 +1172,11 @@ const photoWeightInput = document.getElementById("photo-weight");
 const photoNoteInput = document.getElementById("photo-note");
 const photoSaveBtn = document.getElementById("photo-save");
 
-document.getElementById("photo-add-btn").addEventListener("click", openPhotoUpload);
-document.getElementById("photo-modal-close").addEventListener("click", closePhotoModal);
+const photoAddBtn = document.getElementById("photo-add-btn");
+if (photoAddBtn) photoAddBtn.addEventListener("click", openPhotoUpload);
+
+const photoModalClose = document.getElementById("photo-modal-close");
+if (photoModalClose) photoModalClose.addEventListener("click", closePhotoModal);
 
 function openPhotoUpload() {
   pendingPhotoBlob = null;
@@ -1169,50 +1195,7 @@ function closePhotoModal() {
   pendingPhotoBlob = null;
 }
 
-// --- Камера ---
-document.getElementById("photo-pick-camera").addEventListener("click", () => {
-  photoInput.setAttribute("capture", "environment");
-  photoInput.click();
-  photoInput.addEventListener("change", async (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  try {
-    pendingPhotoBlob = await compressImage(file, 1280, 0.82);
-    photoPreview.src = URL.createObjectURL(pendingPhotoBlob);
-    photoPreview.style.display = "block";
-    photoPreviewPlaceholder.style.display = "none";
-    } catch (err) {
-    showToast("Не удалось обработать фото", "error");
-    console.error(err);
-  }
-  photoInput.value = "";
-  photoInput.removeAttribute("capture");
-});
-});
-
-// --- Галерея ---
-document.getElementById("photo-pick-gallery").addEventListener("click", () => {
-  photoInput.removeAttribute("capture");
-  photoInput.click();
-});
-
-// --- Выбор файла + сжатие ---
-photoInput.addEventListener("change", async (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  try {
-    pendingPhotoBlob = await compressImage(file, 1280, 0.82);
-    photoPreview.src = URL.createObjectURL(pendingPhotoBlob);
-    photoPreview.style.display = "block";
-    photoPreviewPlaceholder.style.display = "none";
-  } catch (err) {
-    showToast("Не удалось обработать фото", "error");
-    console.error(err);
-  }
-  photoInput.value = "";
-});
-
-// --- Сжатие фото через canvas ---
+// --- Сжатие ---
 function compressImage(file, maxSize, quality) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1244,41 +1227,43 @@ function compressImage(file, maxSize, quality) {
   });
 }
 
-// --- Сохранение на сервер ---
-photoSaveBtn.addEventListener("click", async () => {
-  if (!pendingPhotoBlob) {
-    showToast("Сначала выбери фото", "error");
-    return;
-  }
-  photoSaveBtn.disabled = true;
-  photoSaveBtn.textContent = "Сохраняю...";
+// --- Сохранение фото ---
+if (photoSaveBtn) {
+  photoSaveBtn.addEventListener("click", async () => {
+    if (!pendingPhotoBlob) {
+      showToast("Сначала выбери фото", "error");
+      return;
+    }
+    photoSaveBtn.disabled = true;
+    photoSaveBtn.textContent = "Сохраняю...";
 
-  const fd = new FormData();
-  fd.append("user_id", String(userId));
-  fd.append("file", pendingPhotoBlob, `photo_${Date.now()}.jpg`);
-  if (photoWeightInput.value) fd.append("weight", photoWeightInput.value);
-  if (photoNoteInput.value.trim()) fd.append("note", photoNoteInput.value.trim());
+    const fd = new FormData();
+    fd.append("user_id", String(userId));
+    fd.append("file", pendingPhotoBlob, `photo_${Date.now()}.jpg`);
+    if (photoWeightInput.value) fd.append("weight", photoWeightInput.value);
+    if (photoNoteInput.value.trim()) fd.append("note", photoNoteInput.value.trim());
 
-  try {
-    const res = await apiFetch(`/api/photos/upload`, {
-      method: "POST",
-      body: fd,
-    });
-    if (!res.ok) throw new Error("upload failed");
-    closePhotoModal();
-    showToast("Фото добавлено ✓", "success");
-    await loadPhotos();
-  } catch (err) {
-    showToast("Не удалось загрузить фото", "error");
-    console.error(err);
-  } finally {
-    photoSaveBtn.disabled = false;
-    photoSaveBtn.textContent = "Сохранить";
-  }
-});
+    try {
+      const res = await apiFetch(`/api/photos/upload`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error("upload failed");
+      closePhotoModal();
+      showToast("Фото добавлено ✓", "success");
+      await loadPhotos();
+    } catch (err) {
+      showToast("Не удалось загрузить фото", "error");
+      console.error(err);
+    } finally {
+      photoSaveBtn.disabled = false;
+      photoSaveBtn.textContent = "Сохранить";
+    }
+  });
+}
 
 // ============================================================
-// ===== ПОЛНОЭКРАННЫЙ СЛАЙДЕР ================================
+// ===== СЛАЙДЕР ==============================================
 // ============================================================
 
 const slider = document.getElementById("photo-slider");
@@ -1288,9 +1273,12 @@ const sliderWeight = document.getElementById("slider-weight");
 const sliderNote = document.getElementById("slider-note");
 const sliderThumbs = document.getElementById("slider-thumbs");
 
-document.getElementById("slider-close").addEventListener("click", closeSlider);
-document.getElementById("slider-prev").addEventListener("click", () => moveSlider(-1));
-document.getElementById("slider-next").addEventListener("click", () => moveSlider(1));
+const sliderClose = document.getElementById("slider-close");
+if (sliderClose) sliderClose.addEventListener("click", closeSlider);
+const sliderPrev = document.getElementById("slider-prev");
+if (sliderPrev) sliderPrev.addEventListener("click", () => moveSlider(-1));
+const sliderNext = document.getElementById("slider-next");
+if (sliderNext) sliderNext.addEventListener("click", () => moveSlider(1));
 
 function openSlider(index) {
   if (!photosCache.length) return;
@@ -1319,7 +1307,6 @@ function renderSlider() {
   sliderWeight.textContent = p.weight != null ? `⚖️ ${p.weight} кг` : "";
   sliderNote.textContent = p.note || "";
 
-  // Миниатюры снизу
   sliderThumbs.innerHTML = photosCache.map((ph, i) => `
     <div class="slider-thumb ${i === sliderIndex ? "active" : ""}" data-i="${i}">
       <img src="${API}${ph.url}" alt="" loading="lazy">
@@ -1330,26 +1317,25 @@ function renderSlider() {
       sliderIndex = +t.dataset.i;
       renderSlider();
     });
-    // Прокрутить активную миниатюру в вид
     if (+t.dataset.i === sliderIndex) {
       t.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }
   });
 }
 
-// Свайпы на слайдере (мобилки)
 let touchStartX = 0;
-slider.addEventListener("touchstart", (e) => {
-  touchStartX = e.touches[0].clientX;
-}, { passive: true });
-slider.addEventListener("touchend", (e) => {
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  if (Math.abs(dx) > 50) moveSlider(dx < 0 ? 1 : -1);
-});
+if (slider) {
+  slider.addEventListener("touchstart", (e) => {
+    touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+  slider.addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) moveSlider(dx < 0 ? 1 : -1);
+  });
+}
 
-// Стрелки клавиатуры
 document.addEventListener("keydown", (e) => {
-  if (slider.style.display === "flex") {
+  if (slider && slider.style.display === "flex") {
     if (e.key === "ArrowLeft") moveSlider(-1);
     if (e.key === "ArrowRight") moveSlider(1);
     if (e.key === "Escape") closeSlider();
@@ -1357,7 +1343,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ============================================================
-// ===== НАПОМИНАНИЕ «ПОРА СДЕЛАТЬ ФОТО» ======================
+// ===== НАПОМИНАНИЕ ПРО ФОТО =================================
 // ============================================================
 
 function checkWeeklyPhotoReminder(photos) {
@@ -1366,7 +1352,6 @@ function checkWeeklyPhotoReminder(photos) {
   const daysSince = Math.floor((Date.now() - new Date(last.date).getTime()) / 86400000);
   if (daysSince < 7) return;
 
-  // Чтобы не спамить — раз в сутки
   const lastNotify = +localStorage.getItem("lastPhotoNotify") || 0;
   if (Date.now() - lastNotify < 86400000) return;
 
@@ -1375,4 +1360,3 @@ function checkWeeklyPhotoReminder(photos) {
     showToast("📸 Пора сделать новое фото прогресса!", "success");
   }, 1500);
 }
-});
