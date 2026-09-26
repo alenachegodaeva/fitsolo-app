@@ -255,8 +255,12 @@
   </section>
 
   <div id="toast-container"></div>
-    <!-- Скрытый input для выбора фото: камера + галерея -->
-  <input type="file" id="photo-input" accept="image/*"
+     <!-- Input для камеры (iOS откроет камеру) -->
+  <input type="file" id="photo-input-camera" accept="image/*" capture="environment"
+         style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
+
+  <!-- Input для галереи (iOS откроет галерею) -->
+  <input type="file" id="photo-input-gallery" accept="image/*"
          style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
   <!-- Модалка загрузки/просмотра фото -->
   <div id="photo-modal" class="modal-overlay" style="display:none;">
