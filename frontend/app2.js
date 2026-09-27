@@ -1195,7 +1195,7 @@ function renderAchievements(data) {
       }).join("")}
     </div>
   `;
-}
+
   // Кнопки "Поделиться" у достижений
   container.querySelectorAll(".achievement-share").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1204,6 +1204,8 @@ function renderAchievements(data) {
       if (ach) openShareModal(ach, data);
     });
   });
+}
+
 // ===== ПИТАНИЕ =====
 async function loadNutrition() {
   if (!userId) return;
