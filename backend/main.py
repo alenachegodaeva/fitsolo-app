@@ -8,10 +8,11 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pywebpush import webpush, WebPushException
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement
+from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement, PushSubscription
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
 from auth import hash_password, verify_password, create_token, get_user_id_from_token
@@ -1209,3 +1210,162 @@ def get_day(
             for p in photos
         ],
     }
+
+
+# ===== PUSH-УВЕДОМЛЕНИЯ =====
+
+VAPID_PRIVATE_KEY_PATH = Path(__file__).parent / "private_key.pem"
+VAPID_PUBLIC_KEY_PATH = Path(__file__).parent / "public_key.pem"
+VAPID_CLAIM_EMAIL = "mailto:alena@fitsolo.app"
+
+
+def _load_vapid_public_key() -> str:
+    """Читает публичный VAPID-ключ из файла, возвращает base64url-строку."""
+    import base64
+    from cryptography.hazmat.primitives.serialization import (
+        load_pem_public_key, Encoding, PublicFormat,
+    )
+    with open(VAPID_PUBLIC_KEY_PATH, "rb") as f:
+        pub = load_pem_public_key(f.read())
+    raw = pub.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def send_push(user_id: int, title: str, body: str, url: str = "/"):
+    """Отправляет push всем подпискам юзера. Возвращает (sent, failed)."""
+    db = SessionLocal()
+    subs = db.query(PushSubscription).filter_by(user_id=user_id).all()
+    db.close()
+
+    if not subs:
+        return 0, 0
+
+    sent = 0
+    failed = 0
+    dead_endpoints = []
+
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {
+                        "p256dh": sub.p256dh,
+                        "auth": sub.auth,
+                    },
+                },
+                data=json.dumps({
+                    "title": title,
+                    "body": body,
+                    "url": url,
+                }),
+                vapid_private_key=str(VAPID_PRIVATE_KEY_PATH),
+                vapid_claims={"sub": VAPID_CLAIM_EMAIL},
+            )
+            sent += 1
+        except WebPushException as e:
+            failed += 1
+            # 404/410 = подписка мертва, удаляем
+            if e.response is not None and e.response.status_code in (404, 410):
+                dead_endpoints.append(sub.endpoint)
+            else:
+                print(f"Push error для {sub.endpoint[:40]}...: {e}")
+        except Exception as e:
+            failed += 1
+            print(f"Push unknown error: {e}")
+
+    # Чистим мёртвые подписки
+    if dead_endpoints:
+        db = SessionLocal()
+        db.query(PushSubscription).filter(
+            PushSubscription.endpoint.in_(dead_endpoints)
+        ).delete(synchronize_session=False)
+        db.commit()
+        db.close()
+
+    return sent, failed
+
+
+@app.get("/api/push/public-key")
+def get_push_public_key():
+    """Публичный VAPID-ключ для фронта. Не требует авторизации."""
+    try:
+        key = _load_vapid_public_key()
+        return {"public_key": key}
+    except Exception as e:
+        raise HTTPException(500, f"VAPID key error: {e}")
+
+
+class PushSubscribeIn(BaseModel):
+    user_id: int
+    endpoint: str
+    p256dh: str
+    auth: str
+
+
+@app.post("/api/push/subscribe")
+def push_subscribe(
+    data: PushSubscribeIn,
+    authorization: Optional[str] = Header(None),
+):
+    """Сохраняет подписку. Если endpoint уже есть — обновляет."""
+    check_own(authorization, data.user_id)
+
+    db = SessionLocal()
+    try:
+        existing = db.query(PushSubscription).filter_by(
+            endpoint=data.endpoint
+        ).first()
+
+        if existing:
+            existing.user_id = data.user_id
+            existing.p256dh = data.p256dh
+            existing.auth = data.auth
+        else:
+            db.add(PushSubscription(
+                user_id=data.user_id,
+                endpoint=data.endpoint,
+                p256dh=data.p256dh,
+                auth=data.auth,
+            ))
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+@app.post("/api/push/unsubscribe")
+def push_unsubscribe(
+    data: PushSubscribeIn,
+    authorization: Optional[str] = Header(None),
+):
+    """Удаляет подписку по endpoint."""
+    check_own(authorization, data.user_id)
+
+    db = SessionLocal()
+    try:
+        db.query(PushSubscription).filter_by(
+            endpoint=data.endpoint
+        ).delete(synchronize_session=False)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+@app.post("/api/push/test/{user_id}")
+def push_test(
+    user_id: int,
+    authorization: Optional[str] = Header(None),
+):
+    """Тестовый push — для отладки. Отправит уведомление самому себе."""
+    check_own(authorization, user_id)
+
+    sent, failed = send_push(
+        user_id,
+        title="🏋️ FitSolo",
+        body="Это тестовое уведомление. Если видишь его — push работает!",
+        url="/",
+    )
+
+    return {"sent": sent, "failed": failed}

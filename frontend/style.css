@@ -2431,3 +2431,46 @@ input[type="number"] {
 .share-actions button {
   flex: 1;
 }
+
+
+/* ============================================================
+   ===== УВЕДОМЛЕНИЯ ==========================================
+   ============================================================ */
+
+.notifications-fieldset {
+  margin-top: 16px;
+}
+
+.notification-status {
+  margin-bottom: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.notification-actions button {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.notification-ios-hint {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  border-left: 3px solid var(--accent);
+}
+
+.notification-ios-hint strong {
+  color: var(--text);
+}

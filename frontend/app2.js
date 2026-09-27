@@ -1834,7 +1834,7 @@ async function openEditProfile() {
     f.querySelectorAll('input[name="injuries"]').forEach(cb => {
       cb.checked = (p.injuries || []).includes(cb.value);
     });
-
+    initNotifications();
     editProfileModal.style.display = "flex";
   } catch (err) {
     showToast("Не удалось загрузить профиль", "error");
@@ -2159,3 +2159,221 @@ async function openDayModal(dateKey) {
     console.error(err);
   }
 }
+
+
+// ============================================================
+// ===== PUSH-УВЕДОМЛЕНИЯ =====================================
+// ============================================================
+
+let vapidPublicKeyCache = null;
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    output[i] = rawData.charCodeAt(i);
+  }
+  return output;
+}
+
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches
+      || window.navigator.standalone === true;
+}
+
+async function getVapidPublicKey() {
+  if (vapidPublicKeyCache) return vapidPublicKeyCache;
+  const res = await fetch(`${API}/api/push/public-key`);
+  if (!res.ok) throw new Error("Не удалось получить VAPID-ключ");
+  const data = await res.json();
+  vapidPublicKeyCache = data.public_key;
+  return vapidPublicKeyCache;
+}
+
+async function initNotifications() {
+  const statusEl = document.getElementById("notif-status");
+  const enableBtn = document.getElementById("notif-enable");
+  const disableBtn = document.getElementById("notif-disable");
+  const testBtn = document.getElementById("notif-test");
+  const iosHint = document.getElementById("notif-ios-hint");
+
+  if (!statusEl || !enableBtn || !disableBtn || !testBtn) return;
+
+  // Сброс видимости
+  enableBtn.style.display = "none";
+  disableBtn.style.display = "none";
+  testBtn.style.display = "none";
+  if (iosHint) iosHint.style.display = "none";
+
+  // Поддержка браузером
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    statusEl.innerHTML = '<span class="hint">Уведомления не поддерживаются этим браузером</span>';
+    return;
+  }
+
+  // iOS: проверяем, что PWA установлено
+  if (isIOS() && !isStandalone()) {
+    statusEl.innerHTML = '<span class="hint">На iPhone уведомления работают только в установленном приложении</span>';
+    if (iosHint) iosHint.style.display = "block";
+    return;
+  }
+
+  // Проверяем текущую подписку
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+
+    if (sub) {
+      statusEl.innerHTML = '<span class="hint" style="color:var(--accent);">✅ Уведомления включены</span>';
+      disableBtn.style.display = "inline-flex";
+      testBtn.style.display = "inline-flex";
+    } else {
+      statusEl.innerHTML = '<span class="hint">Уведомления выключены</span>';
+      enableBtn.style.display = "inline-flex";
+    }
+  } catch (err) {
+    statusEl.innerHTML = '<span class="hint">Ошибка проверки подписки</span>';
+    console.warn("Notification init error:", err);
+  }
+}
+
+async function enableNotifications() {
+  const statusEl = document.getElementById("notif-status");
+  const enableBtn = document.getElementById("notif-enable");
+
+  if (enableBtn) {
+    enableBtn.disabled = true;
+    enableBtn.textContent = "Включаю...";
+  }
+
+  try {
+    // 1. Разрешение
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      showToast("Разрешение не выдано", "error");
+      await initNotifications();
+      return;
+    }
+
+    // 2. VAPID-ключ
+    const publicKey = await getVapidPublicKey();
+
+    // 3. Service Worker
+    const reg = await navigator.serviceWorker.ready;
+
+    // 4. Подписка
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+
+    // 5. Отправка на бэкенд
+    const subJson = sub.toJSON();
+    const res = await apiFetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: +userId,
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth,
+      }),
+    });
+
+    if (!res.ok) throw new Error("subscribe failed");
+
+    showToast("🔔 Уведомления включены ✓", "success");
+    await initNotifications();
+  } catch (err) {
+    console.error("enableNotifications error:", err);
+    showToast("Не удалось включить уведомления", "error");
+    await initNotifications();
+  } finally {
+    if (enableBtn) {
+      enableBtn.disabled = false;
+      enableBtn.textContent = "🔔 Включить уведомления";
+    }
+  }
+}
+
+async function disableNotifications() {
+  const disableBtn = document.getElementById("notif-disable");
+  if (disableBtn) {
+    disableBtn.disabled = true;
+    disableBtn.textContent = "Отключаю...";
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+
+    if (sub) {
+      // Удаляем на бэкенде
+      const subJson = sub.toJSON();
+      await apiFetch("/api/push/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: +userId,
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys ? subJson.keys.p256dh : "",
+          auth: subJson.keys ? subJson.keys.auth : "",
+        }),
+      });
+
+      // Отписываемся локально
+      await sub.unsubscribe();
+    }
+
+    showToast("Уведомления выключены", "success");
+    await initNotifications();
+  } catch (err) {
+    console.error("disableNotifications error:", err);
+    showToast("Не удалось выключить уведомления", "error");
+    await initNotifications();
+  } finally {
+    if (disableBtn) {
+      disableBtn.disabled = false;
+      disableBtn.textContent = "🔕 Выключить";
+    }
+  }
+}
+
+async function sendTestNotification() {
+  const testBtn = document.getElementById("notif-test");
+  if (testBtn) {
+    testBtn.disabled = true;
+    testBtn.textContent = "Отправляю...";
+  }
+
+  try {
+    const res = await apiFetch(`/api/push/test/${userId}`, { method: "POST" });
+    const data = await res.json();
+    if (data.sent > 0) {
+      showToast(`Тестовое уведомление отправлено (${data.sent})`, "success");
+    } else {
+      showToast("Не удалось отправить — подписка неактивна", "error");
+    }
+  } catch (err) {
+    console.error("sendTestNotification error:", err);
+    showToast("Ошибка отправки", "error");
+  } finally {
+    if (testBtn) {
+      testBtn.disabled = false;
+      testBtn.textContent = "📤 Тестовое уведомление";
+    }
+  }
+}
+
+// Обработчики кнопок
+document.addEventListener("click", (e) => {
+  if (e.target.id === "notif-enable") enableNotifications();
+  if (e.target.id === "notif-disable") disableNotifications();
+  if (e.target.id === "notif-test") sendTestNotification();
+});

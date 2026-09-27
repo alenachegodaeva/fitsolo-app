@@ -537,7 +537,28 @@
             <label><input type="checkbox" name="injuries" value="shoulder"> Плечи</label>
           </div>
         </fieldset>
-
+        <fieldset class="notifications-fieldset">
+          <legend>🔔 Уведомления</legend>
+          <div class="notification-status" id="notif-status">
+            <span class="hint">Проверяю...</span>
+          </div>
+          <div class="notification-actions">
+            <button type="button" id="notif-enable" class="btn-secondary" style="display:none;">
+              🔔 Включить уведомления
+            </button>
+            <button type="button" id="notif-disable" class="btn-secondary danger" style="display:none;">
+              🔕 Выключить
+            </button>
+            <button type="button" id="notif-test" class="btn-secondary" style="display:none;">
+              📤 Тестовое уведомление
+            </button>
+          </div>
+          <div class="notification-ios-hint" id="notif-ios-hint" style="display:none;">
+            📱 <strong>На iPhone</strong> уведомления работают только если приложение
+            <strong>добавлено на домашний экран</strong>: открой сайт в Safari → кнопка «Поделиться» → «На экран "Домой"».
+            Потом открывай FitSolo оттуда и включи уведомления.
+          </div>
+        </fieldset>
         <button type="submit">Сохранить</button>
       </form>
     </div>
