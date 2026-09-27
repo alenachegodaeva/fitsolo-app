@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitsolo-v23';
+const CACHE_NAME = 'fitsolo-v24';
 const STATIC_ASSETS = [
   'index.html',
   'style.css',
@@ -41,6 +41,11 @@ self.addEventListener('fetch', (event) => {
 
   // API-запросы — только сеть (не кэшируем данные)
   if (url.pathname.startsWith('/api/') || url.port === '8000') {
+    return;
+  }
+    // install.js — всегда из сети (не кэшируем, чтобы обновления подхватывались)
+  if (url.pathname.endsWith('/install.js')) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
