@@ -300,7 +300,7 @@ document.querySelectorAll(".tab[data-tab]").forEach(t => {
     t.classList.add("active");
     document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
     if (t.dataset.tab === "stats") { loadStats(); loadAchievements(); loadPhotos(); loadMuscles()}
-    if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); }
+    if (t.dataset.tab === "nutrition") { loadNutrition(); loadMeals(); loadRecipes();}
     if (t.dataset.tab === "log") buildExercisePicker();
     if (t.dataset.tab === "calendar") { initCalendar(); }
   });
@@ -2376,4 +2376,239 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "notif-enable") enableNotifications();
   if (e.target.id === "notif-disable") disableNotifications();
   if (e.target.id === "notif-test") sendTestNotification();
+});
+
+
+// ============================================================
+// ===== РЕЦЕПТЫ ===============================================
+// ============================================================
+
+let recipesCache = [];
+let recipesFilter = "";
+let currentRecipeSlug = null;
+
+const RECIPE_CATEGORY_LABELS = {
+  breakfast: "🌅 Завтрак",
+  lunch: "☀️ Обед",
+  dinner: "🌙 Ужин",
+  snack: "🍎 Перекус",
+  smoothie: "🥤 Смузи",
+};
+
+const RECIPE_TAG_LABELS = {
+  high_protein: "💪 Белковое",
+  low_cal: "🔥 Низкокал",
+  quick: "⚡ Быстро",
+  vegetarian: "🌱 Веган",
+  bulk: "📈 Набор",
+  cut: "✂️ Сушка",
+};
+
+async function loadRecipes(category = recipesFilter) {
+  recipesFilter = category;
+  const carousel = document.getElementById("recipes-carousel");
+  const emptyEl = document.getElementById("recipes-empty");
+  if (!carousel || !emptyEl) return;
+
+  try {
+    const url = category
+      ? `${API}/api/recipes?category=${category}`
+      : `${API}/api/recipes?limit=20`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("recipes fetch failed");
+    recipesCache = await res.json();
+
+    if (!recipesCache.length) {
+      carousel.innerHTML = "";
+      emptyEl.style.display = "block";
+      emptyEl.textContent = "Нет рецептов в этой категории";
+      return;
+    }
+
+    emptyEl.style.display = "none";
+    renderRecipeCards(recipesCache);
+  } catch (err) {
+    console.warn("Не удалось загрузить рецепты:", err);
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "Не удалось загрузить рецепты";
+  }
+}
+
+function renderRecipeCards(recipes) {
+  const carousel = document.getElementById("recipes-carousel");
+  if (!carousel) return;
+
+  carousel.innerHTML = recipes.map(r => `
+    <div class="recipe-card" data-slug="${r.slug}">
+      <div class="recipe-card-emoji">${recipeEmoji(r)}</div>
+      <div class="recipe-card-body">
+        <div class="recipe-card-name">${r.name}</div>
+        <div class="recipe-card-meta">
+          <span>${r.calories ? Math.round(r.calories) + " ккал" : ""}</span>
+          ${r.time_min ? `<span>⏱ ${r.time_min} мин</span>` : ""}
+        </div>
+        <div class="recipe-card-macros">
+          Б ${Math.round(r.protein || 0)} · Ж ${Math.round(r.fat || 0)} · У ${Math.round(r.carbs || 0)}
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  carousel.querySelectorAll(".recipe-card").forEach(card => {
+    card.addEventListener("click", () => {
+      openRecipeModal(card.dataset.slug);
+    });
+  });
+}
+
+function recipeEmoji(r) {
+  const cat = r.category;
+  if (cat === "breakfast") return "🌅";
+  if (cat === "lunch") return "☀️";
+  if (cat === "dinner") return "🌙";
+  if (cat === "snack") return "🍎";
+  if (cat === "smoothie") return "🥤";
+  return "🍽";
+}
+
+async function openRecipeModal(slug) {
+  const modal = document.getElementById("recipe-modal");
+  if (!modal) return;
+
+  currentRecipeSlug = slug;
+
+  const titleEl = document.getElementById("recipe-modal-title");
+  const metaEl = document.getElementById("recipe-modal-meta");
+  const tagsEl = document.getElementById("recipe-modal-tags");
+  const ingEl = document.getElementById("recipe-modal-ingredients");
+  const stepsEl = document.getElementById("recipe-modal-steps");
+
+  // Сброс
+  titleEl.textContent = "Загрузка…";
+  metaEl.innerHTML = "";
+  tagsEl.innerHTML = "";
+  ingEl.innerHTML = "";
+  stepsEl.innerHTML = "";
+  modal.style.display = "flex";
+
+  try {
+    const res = await fetch(`${API}/api/recipes/${slug}`);
+    if (!res.ok) throw new Error("recipe fetch failed");
+    const r = await res.json();
+
+    titleEl.textContent = r.name;
+
+    metaEl.innerHTML = `
+      <span>${RECIPE_CATEGORY_LABELS[r.category] || r.category}</span>
+      ${r.time_min ? `<span>⏱ ${r.time_min} мин</span>` : ""}
+      ${r.servings > 1 ? `<span>🍽 ${r.servings} порц.</span>` : ""}
+    `;
+
+    tagsEl.innerHTML = (r.tags || []).map(t =>
+      `<span class="recipe-tag">${RECIPE_TAG_LABELS[t] || t}</span>`
+    ).join("");
+
+    ingEl.innerHTML = (r.ingredients || []).map(i =>
+      `<li><span>${i.name}</span><span class="recipe-ing-grams">${i.grams} г</span></li>`
+    ).join("");
+
+    stepsEl.innerHTML = (r.steps || []).map(s =>
+      `<li>${s}</li>`
+    ).join("");
+
+    // Запоминаем КБЖУ для кнопки «Добавить в дневник»
+    modal.dataset.calories = r.calories || 0;
+    modal.dataset.protein = r.protein || 0;
+    modal.dataset.fat = r.fat || 0;
+    modal.dataset.carbs = r.carbs || 0;
+    modal.dataset.recipeName = r.name;
+  } catch (err) {
+    titleEl.textContent = "Ошибка загрузки";
+    console.warn("openRecipeModal error:", err);
+  }
+}
+
+function closeRecipeModal() {
+  const modal = document.getElementById("recipe-modal");
+  if (modal) modal.style.display = "none";
+  currentRecipeSlug = null;
+}
+
+function addRecipeToDiary() {
+  const modal = document.getElementById("recipe-modal");
+  if (!modal) return;
+
+  const name = modal.dataset.recipeName || "Рецепт FitSolo";
+  const calories = +modal.dataset.calories || 0;
+  const protein = +modal.dataset.protein || 0;
+  const fat = +modal.dataset.fat || 0;
+  const carbs = +modal.dataset.carbs || 0;
+
+  // Заполняем форму приёма пищи
+  const form = document.getElementById("meal-form");
+  if (!form) return;
+
+  form.name.value = name;
+  form.grams.value = 100;
+  form.calories.value = calories;
+  form.protein.value = protein;
+  form.fat.value = fat;
+  form.carbs.value = carbs;
+
+  // Обнуляем data-base, чтобы recalcMacros не сбивал
+  form.calories.dataset.base = calories;
+  form.protein.dataset.base = protein;
+  form.fat.dataset.base = fat;
+  form.carbs.dataset.base = carbs;
+
+  closeRecipeModal();
+
+  // Скролл к форме
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => form.grams.focus(), 300);
+
+  showToast("Рецепт добавлен в форму ✓", "success");
+}
+
+// Обработчики
+document.addEventListener("click", (e) => {
+  // Кнопка «Все →»
+  if (e.target.id === "recipes-all-btn") {
+    // Показываем все — сбрасываем фильтр
+    document.querySelectorAll(".recipe-filter-chip").forEach(ch => ch.classList.remove("active"));
+    const allChip = document.querySelector('.recipe-filter-chip[data-cat=""]');
+    if (allChip) allChip.classList.add("active");
+    loadRecipes("");
+    return;
+  }
+
+  // Кнопка фильтра
+  const chip = e.target.closest(".recipe-filter-chip");
+  if (chip) {
+    document.querySelectorAll(".recipe-filter-chip").forEach(ch => ch.classList.remove("active"));
+    chip.classList.add("active");
+    loadRecipes(chip.dataset.cat);
+    return;
+  }
+
+  // Закрытие модалки
+  if (e.target.id === "recipe-modal-close") {
+    closeRecipeModal();
+    return;
+  }
+
+  // Кнопка «Добавить в дневник»
+  if (e.target.id === "recipe-add-to-diary") {
+    addRecipeToDiary();
+    return;
+  }
+});
+
+// Закрытие модалки по клику вне карточки
+document.addEventListener("click", (e) => {
+  const modal = document.getElementById("recipe-modal");
+  if (modal && modal.style.display === "flex" && e.target === modal) {
+    closeRecipeModal();
+  }
 });

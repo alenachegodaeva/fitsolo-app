@@ -336,7 +336,30 @@
     <div id="tab-nutrition" class="tab-content">
       <h2>🍎 Норма КБЖУ</h2>
       <div id="nutrition-norm"></div>
+      <!-- 🥗 РЕЦЕПТЫ -->
+      <div id="recipes-block" class="recipes-block">
+        <div class="recipes-header">
+          <h3>🥗 Рецепты</h3>
+          <button id="recipes-all-btn" class="btn-secondary recipes-all-btn" type="button">
+            Все →
+          </button>
+        </div>
 
+        <div class="recipes-filters">
+          <button class="recipe-filter-chip active" data-cat="" type="button">Все</button>
+          <button class="recipe-filter-chip" data-cat="breakfast" type="button">🌅 Завтрак</button>
+          <button class="recipe-filter-chip" data-cat="lunch" type="button">☀️ Обед</button>
+          <button class="recipe-filter-chip" data-cat="dinner" type="button">🌙 Ужин</button>
+          <button class="recipe-filter-chip" data-cat="snack" type="button">🍎 Перекус</button>
+          <button class="recipe-filter-chip" data-cat="smoothie" type="button">🥤 Смузи</button>
+        </div>
+
+        <div id="recipes-carousel" class="recipes-carousel"></div>
+
+        <div id="recipes-empty" class="hint" style="display:none;">
+          Рецепты загружаются…
+        </div>
+      </div>
       <h3>Добавить приём пищи</h3>
       <form id="meal-form">
         <div class="food-search-wrap">
@@ -578,7 +601,32 @@
       </div>
     </div>
   </div>
+  <!-- Модалка рецепта -->
+  <div id="recipe-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card recipe-modal-card">
+      <button id="recipe-modal-close" class="modal-close">✕</button>
 
+      <div class="recipe-modal-body">
+        <h2 id="recipe-modal-title" class="recipe-modal-title"></h2>
+
+        <div id="recipe-modal-meta" class="recipe-modal-meta"></div>
+
+        <div id="recipe-modal-tags" class="recipe-modal-tags"></div>
+
+        <h4 class="recipe-section-h4">🥕 Ингредиенты</h4>
+        <ul id="recipe-modal-ingredients" class="recipe-ingredients"></ul>
+
+        <h4 class="recipe-section-h4">👨‍🍳 Приготовление</h4>
+        <ol id="recipe-modal-steps" class="recipe-steps"></ol>
+      </div>
+
+      <div class="recipe-modal-actions">
+        <button id="recipe-add-to-diary" class="btn-primary" type="button">
+          ➕ Добавить в дневник
+        </button>
+      </div>
+    </div>
+  </div>
   <script src="app2.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

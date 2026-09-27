@@ -94,6 +94,23 @@ class PushSubscription(Base):
     auth = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-
+class Recipe(Base):
+    __tablename__ = "recipes"
+    id = Column(Integer, primary_key=True)
+    slug = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    category = Column(String, index=True, nullable=False)
+    tags = Column(Text)                # JSON-строка
+    time_min = Column(Integer)
+    servings = Column(Integer, default=1)
+    ingredients = Column(Text)          # JSON-строка
+    calories = Column(Float)
+    protein = Column(Float)
+    fat = Column(Float)
+    carbs = Column(Float)
+    steps = Column(Text)                # JSON-строка
+    photo_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
 def init_db():
     Base.metadata.create_all(bind=engine)

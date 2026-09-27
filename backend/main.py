@@ -12,7 +12,7 @@ from pywebpush import webpush, WebPushException
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement, PushSubscription
+from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement, PushSubscription, Recipe
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
 from auth import hash_password, verify_password, create_token, get_user_id_from_token
@@ -1369,3 +1369,116 @@ def push_test(
     )
 
     return {"sent": sent, "failed": failed}
+
+
+# ===== РЕЦЕПТЫ =====
+
+def seed_recipes_if_empty():
+    """Загружает recipes_seed.json в БД, если таблица пуста."""
+    db = SessionLocal()
+    try:
+        count = db.query(Recipe).count()
+        if count > 0:
+            print(f"Рецепты уже загружены: {count}")
+            return
+
+        seed_path = Path(__file__).parent / "recipes_seed.json"
+        if not seed_path.exists():
+            print("recipes_seed.json не найден — пропускаю")
+            return
+
+        data = json.loads(seed_path.read_text(encoding="utf-8"))
+        for r in data:
+            db.add(Recipe(
+                slug=r["slug"],
+                name=r["name"],
+                category=r["category"],
+                tags=json.dumps(r.get("tags", []), ensure_ascii=False),
+                time_min=r.get("time_min"),
+                servings=r.get("servings", 1),
+                ingredients=json.dumps(r.get("ingredients", []), ensure_ascii=False),
+                calories=r.get("calories"),
+                protein=r.get("protein"),
+                fat=r.get("fat"),
+                carbs=r.get("carbs"),
+                steps=json.dumps(r.get("steps", []), ensure_ascii=False),
+                photo_url=r.get("photo_url"),
+            ))
+        db.commit()
+        print(f"Загружено {len(data)} рецептов")
+    except Exception as e:
+        print(f"Ошибка загрузки рецептов: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def _recipe_to_dict(r: Recipe) -> dict:
+    """Преобразует модель Recipe в dict с распарсенными JSON-полями."""
+    return {
+        "id": r.id,
+        "slug": r.slug,
+        "name": r.name,
+        "category": r.category,
+        "tags": json.loads(r.tags or "[]"),
+        "time_min": r.time_min,
+        "servings": r.servings,
+        "ingredients": json.loads(r.ingredients or "[]"),
+        "calories": r.calories,
+        "protein": r.protein,
+        "fat": r.fat,
+        "carbs": r.carbs,
+        "steps": json.loads(r.steps or "[]"),
+        "photo_url": r.photo_url,
+    }
+
+
+@app.get("/api/recipes")
+def get_recipes(
+    q: str = "",
+    category: str = "",
+    tag: str = "",
+    max_cal: int = 0,
+    limit: int = 200,
+):
+    """Список рецептов с фильтрами. Не требует авторизации."""
+    db = SessionLocal()
+    try:
+        query = db.query(Recipe)
+
+        if category:
+            query = query.filter(Recipe.category == category)
+
+        if max_cal > 0:
+            query = query.filter(Recipe.calories <= max_cal)
+
+        # Фильтры по q и tag — на Python, потому что tags — JSON-строка
+        rows = query.order_by(Recipe.name.asc()).all()
+
+        if q:
+            q_lower = q.lower()
+            rows = [r for r in rows if q_lower in r.name.lower()]
+
+        if tag:
+            rows = [r for r in rows if tag in json.loads(r.tags or "[]")]
+
+        return [_recipe_to_dict(r) for r in rows[:limit]]
+    finally:
+        db.close()
+
+
+@app.get("/api/recipes/{slug}")
+def get_recipe(slug: str):
+    """Один рецепт по slug. Не требует авторизации."""
+    db = SessionLocal()
+    try:
+        r = db.query(Recipe).filter_by(slug=slug).first()
+        if not r:
+            raise HTTPException(404, "Рецепт не найден")
+        return _recipe_to_dict(r)
+    finally:
+        db.close()
+
+
+# Вызываем сид рецептов ПОСЛЕ определения всех функций
+seed_recipes_if_empty()
