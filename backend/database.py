@@ -111,6 +111,12 @@ class Recipe(Base):
     steps = Column(Text)                # JSON-строка
     photo_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+class PushLog(Base):
+    __tablename__ = "push_logs"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    job_name = Column(String, nullable=False)   # "morning" / "missed" / "evening"
+    sent_at = Column(DateTime, default=datetime.utcnow, index=True)
     
 def init_db():
     Base.metadata.create_all(bind=engine)

@@ -3,16 +3,19 @@ import os
 import shutil
 import uuid
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pywebpush import webpush, WebPushException
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement, PushSubscription, Recipe
+from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement, PushSubscription, Recipe, PushLog
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
 from auth import hash_password, verify_password, create_token, get_user_id_from_token
@@ -1480,5 +1483,228 @@ def get_recipe(slug: str):
         db.close()
 
 
+# ===== ДЖОБЫ PUSH-УВЕДОМЛЕНИЙ =====
+
+MSK = ZoneInfo("Europe/Moscow")
+
+
+def _already_sent_today(user_id: int, job_name: str) -> bool:
+    """Проверяет, отправляли ли сегодня этот тип push юзеру."""
+    db = SessionLocal()
+    try:
+        today_start = datetime.now(MSK).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_utc = today_start.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+        exists = db.query(PushLog).filter(
+            PushLog.user_id == user_id,
+            PushLog.job_name == job_name,
+            PushLog.sent_at >= today_start_utc,
+        ).first()
+        return exists is not None
+    finally:
+        db.close()
+
+
+def _log_push_sent(user_id: int, job_name: str):
+    """Пишет факт отправки в PushLog."""
+    db = SessionLocal()
+    try:
+        db.add(PushLog(user_id=user_id, job_name=job_name))
+        db.commit()
+    finally:
+        db.close()
+
+
+def _has_workout_today(user_id: int) -> bool:
+    """Была ли тренировка сегодня."""
+    db = SessionLocal()
+    try:
+        today_start = datetime.now(MSK).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_utc = today_start.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+        count = db.query(WorkoutLog).filter(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.date >= today_start_utc,
+        ).count()
+        return count > 0
+    finally:
+        db.close()
+
+
+def _has_workout_last_n_days(user_id: int, days: int) -> bool:
+    """Была ли тренировка за последние N дней (включая сегодня)."""
+    db = SessionLocal()
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        count = db.query(WorkoutLog).filter(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.date >= cutoff,
+        ).count()
+        return count > 0
+    finally:
+        db.close()
+
+
+def _has_meal_today(user_id: int) -> bool:
+    """Добавлял ли юзер еду сегодня."""
+    db = SessionLocal()
+    try:
+        today_start = datetime.now(MSK).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_utc = today_start.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+        count = db.query(Meal).filter(
+            Meal.user_id == user_id,
+            Meal.date >= today_start_utc,
+        ).count()
+        return count > 0
+    finally:
+        db.close()
+
+
+def job_morning():
+    """9:00 МСК — напоминание о тренировке. Кому: кто не тренировался 2+ дня."""
+    print("[scheduler] job_morning старт")
+    db = SessionLocal()
+    try:
+        user_ids = [row[0] for row in db.query(PushSubscription.user_id).distinct().all()]
+    finally:
+        db.close()
+
+    sent = 0
+    for uid in user_ids:
+        # Уже отправляли сегодня?
+        if _already_sent_today(uid, "morning"):
+            continue
+        # Тренировка сегодня уже была?
+        if _has_workout_today(uid):
+            continue
+        # Тренировался последние 2 дня? Если да — не спамим
+        if _has_workout_last_n_days(uid, 2):
+            continue
+
+        ok, failed = send_push(
+            uid,
+            title="🏋️ FitSolo",
+            body="Доброе утро! Пора на тренировку 💪",
+            url="/",
+        )
+        if ok > 0:
+            _log_push_sent(uid, "morning")
+            sent += 1
+    print(f"[scheduler] job_morning отправлено: {sent}")
+
+
+def job_missed():
+    """11:00 МСК — возврат пропавших. Кому: кто не тренировался 3+ дня."""
+    print("[scheduler] job_missed старт")
+    db = SessionLocal()
+    try:
+        user_ids = [row[0] for row in db.query(PushSubscription.user_id).distinct().all()]
+    finally:
+        db.close()
+
+    sent = 0
+    for uid in user_ids:
+        if _already_sent_today(uid, "missed"):
+            continue
+        # Уже отправляли утреннее?
+        if _already_sent_today(uid, "morning"):
+            continue
+        # Тренировался последние 3 дня? Если да — не «пропал»
+        if _has_workout_last_n_days(uid, 3):
+            continue
+
+        ok, failed = send_push(
+            uid,
+            title="🏋️ FitSolo",
+            body="Ты пропал! Возвращайся, streak ждёт 🔥",
+            url="/",
+        )
+        if ok > 0:
+            _log_push_sent(uid, "missed")
+            sent += 1
+    print(f"[scheduler] job_missed отправлено: {sent}")
+
+
+def job_evening():
+    """20:00 МСК — напоминание о питании. Кому: кто не записывал еду сегодня."""
+    print("[scheduler] job_evening старт")
+    db = SessionLocal()
+    try:
+        user_ids = [row[0] for row in db.query(PushSubscription.user_id).distinct().all()]
+    finally:
+        db.close()
+
+    sent = 0
+    for uid in user_ids:
+        if _already_sent_today(uid, "evening"):
+            continue
+        # Уже записал еду сегодня?
+        if _has_meal_today(uid):
+            continue
+
+        ok, failed = send_push(
+            uid,
+            title="🍎 FitSolo",
+            body="Что ел сегодня? Запиши в дневник 🍎",
+            url="/",
+        )
+        if ok > 0:
+            _log_push_sent(uid, "evening")
+            sent += 1
+    print(f"[scheduler] job_evening отправлено: {sent}")
+
+
+# ===== ЭНДПОИНТ ДЛЯ РУЧНОГО ТЕСТА =====
+
+@app.post("/api/push/scheduled/run-now/{job_name}")
+def run_scheduled_job_now(
+    job_name: str,
+    authorization: Optional[str] = Header(None),
+):
+    """Запускает джоб вручную. job_name: morning / missed / evening."""
+    require_auth(authorization)
+
+    jobs = {
+        "morning": job_morning,
+        "missed": job_missed,
+        "evening": job_evening,
+    }
+    if job_name not in jobs:
+        raise HTTPException(400, f"Неизвестный джоб: {job_name}. Доступны: morning, missed, evening")
+
+    jobs[job_name]()
+    return {"ok": True, "job": job_name}
+
+
+# ===== APSCHEDULER =====
+
+scheduler = BackgroundScheduler(timezone="Europe/Moscow")
+
+
+def start_scheduler():
+    """Запускает фоновые джобы."""
+    scheduler.add_job(
+        job_morning,
+        CronTrigger(hour=9, minute=0, timezone="Europe/Moscow"),
+        id="morning",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        job_missed,
+        CronTrigger(hour=11, minute=0, timezone="Europe/Moscow"),
+        id="missed",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        job_evening,
+        CronTrigger(hour=20, minute=0, timezone="Europe/Moscow"),
+        id="evening",
+        replace_existing=True,
+    )
+    scheduler.start()
+    print("[scheduler] Запущен. Джобы: 9:00 (morning), 11:00 (missed), 20:00 (evening) МСК")
+
+
 # Вызываем сид рецептов ПОСЛЕ определения всех функций
 seed_recipes_if_empty()
+
+# Запускаем scheduler
+start_scheduler()
