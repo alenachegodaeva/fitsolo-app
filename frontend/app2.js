@@ -2611,4 +2611,94 @@ document.addEventListener("click", (e) => {
   if (modal && modal.style.display === "flex" && e.target === modal) {
     closeRecipeModal();
   }
+  // ==========================================
+// ЛОГИКА УСТАНОВКИ PWA (Install Prompt)
+// ==========================================
+
+let deferredInstallPrompt = null;
+
+// 1. Слушаем событие на Android/Chrome
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Предотвращаем стандартный мини-бар браузера
+    e.preventDefault();
+    // Сохраняем событие для использования позже
+    deferredInstallPrompt = e;
+    
+    // Показываем нашу модалку (только если не скрыто пользователем)
+    checkAndShowInstallModal('android');
+});
+
+// 2. Проверяем, установлено ли приложение уже
+function isAppInstalled() {
+    // Для iOS Safari
+    if (window.navigator.standalone === true) return true;
+    // Для Android/Desktop
+    if (window.matchMedia('(display-mode: standalone)').matches) return true;
+    return false;
+}
+
+// 3. Определяем iOS для показа инструкции
+function isIOSDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+// 4. Функция проверки и показа модалки
+function checkAndShowInstallModal(platform) {
+    // Если уже установлено — выходим
+    if (isAppInstalled()) return;
+    
+    // Если пользователь нажал "Не показывать снова" — выходим
+    if (localStorage.getItem('fitsolo_install_dismissed') === 'true') return;
+
+    // Если это iOS и событие Android не сработало — показываем инструкцию для iOS
+    if (platform === 'ios' || (isIOSDevice() && !deferredInstallPrompt)) {
+        document.getElementById('installIosContent').style.display = 'block';
+        document.getElementById('installAndroidContent').style.display = 'none';
+        document.getElementById('installModal').classList.add('active');
+    } 
+    // Если есть событие установки (Android/Desktop) — показываем кнопку
+    else if (platform === 'android' && deferredInstallPrompt) {
+        document.getElementById('installAndroidContent').style.display = 'block';
+        document.getElementById('installIosContent').style.display = 'none';
+        document.getElementById('installModal').classList.add('active');
+        
+        // Настраиваем кнопку установки
+        const installBtn = document.getElementById('installBtnNative');
+        installBtn.onclick = async () => {
+            if (!deferredInstallPrompt) return;
+            
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            
+            // Событие можно использовать только один раз
+            deferredInstallPrompt = null;
+            
+            // Закрываем модалку после установки или отказа
+            closeInstallModal();
+        };
+    }
+}
+
+// 5. Функция закрытия (просто скрыть)
+function closeInstallModal() {
+    document.getElementById('installModal').classList.remove('active');
+}
+
+// 6. Функция "Не показывать снова" (запомнить навсегда или надолго)
+function dismissInstallForever() {
+    localStorage.setItem('fitsolo_install_dismissed', 'true');
+    closeInstallModal();
+}
+
+// 7. Инициализация при загрузке страницы
+// (Вызываем с небольшой задержкой, чтобы не мешать загрузке)
+window.addEventListener('load', () => {
+    // Если это iOS — показываем инструкцию сразу (с задержкой)
+    if (isIOSDevice() && !isAppInstalled() && localStorage.getItem('fitsolo_install_dismissed') !== 'true') {
+        // Не показываем сразу при каждом входе, а только если пользователь давно не заходил?
+        // Пока просто покажем с задержкой 2 секунды после загрузки
+        setTimeout(() => checkAndShowInstallModal('ios'), 2000);
+    }
+});
 });

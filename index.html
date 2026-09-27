@@ -637,5 +637,35 @@
       });
     }
   </script>
+  <!-- Модалка установки PWA -->
+<div id="installModal" class="install-modal-overlay">
+    <div class="install-modal">
+        <button class="install-close-x" onclick="closeInstallModal()">&times;</button>
+        <img src="icon-192.png" alt="FitSolo" class="install-modal-icon">
+        
+        <!-- Контент для Android -->
+        <div id="installAndroidContent" style="display: none;">
+            <h3>Установить FitSolo?</h3>
+            <p>Добавь приложение на главный экран для быстрого доступа и работы без интернета.</p>
+            <button id="installBtnNative" class="install-btn-primary">Установить</button>
+        </div>
+
+        <!-- Контент для iOS -->
+        <div id="installIosContent" style="display: none;">
+            <h3>Установка на iPhone</h3>
+            <p>Safari не может установить приложение автоматически. Сделай это вручную:</p>
+            <div class="install-steps">
+                <ol>
+                    <li>Нажми кнопку <strong>«Поделиться»</strong> внизу экрана (квадрат со стрелкой).</li>
+                    <li>Пролистай список и выбери <strong>«На экран "Домой"</strong>.</li>
+                    <li>Нажми <strong>«Добавить»</strong>.</li>
+                </ol>
+            </div>
+            <button class="install-btn-primary" onclick="closeInstallModal()">Понятно</button>
+        </div>
+        
+        <button class="install-btn-secondary" onclick="dismissInstallForever()">Не показывать снова</button>
+    </div>
+</div>
 </body>
 </html>

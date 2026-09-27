@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitsolo-v20';
+const CACHE_NAME = 'fitsolo-v21';
 const STATIC_ASSETS = [
   'index.html',
   'style.css',
