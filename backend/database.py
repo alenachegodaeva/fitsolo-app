@@ -118,5 +118,43 @@ class PushLog(Base):
     job_name = Column(String, nullable=False)   # "morning" / "missed" / "evening"
     sent_at = Column(DateTime, default=datetime.utcnow, index=True)
     
+class Client(Base):
+    __tablename__ = "clients"
+    id = Column(Integer, primary_key=True)
+    trainer_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # если клиент зарегистрирован
+    name = Column(String, nullable=False)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    goal = Column(String, nullable=True)      # "похудение" / "масса" / "сила"
+    age = Column(Integer, nullable=True)
+    height = Column(Float, nullable=True)
+    weight = Column(Float, nullable=True)
+    notes = Column(Text, nullable=True)       # общая заметка
+    status = Column(String, default="active") # "active" / "archived"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ClientNote(Base):
+    __tablename__ = "client_notes"
+    id = Column(Integer, primary_key=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), index=True, nullable=False)
+    date = Column(DateTime, default=datetime.utcnow)
+    text = Column(Text, nullable=False)
+
+
+class ClientMeasurement(Base):
+    __tablename__ = "client_measurements"
+    id = Column(Integer, primary_key=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), index=True, nullable=False)
+    date = Column(DateTime, default=datetime.utcnow)
+    weight = Column(Float, nullable=True)
+    chest = Column(Float, nullable=True)   # грудь
+    waist = Column(Float, nullable=True)   # талия
+    hips = Column(Float, nullable=True)    # бёдра
+    arm = Column(Float, nullable=True)     # рука
+    leg = Column(Float, nullable=True)     # нога
+    note = Column(Text, nullable=True)
+
 def init_db():
     Base.metadata.create_all(bind=engine)

@@ -15,7 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement, PushSubscription, Recipe, PushLog
+from database import init_db, SessionLocal, User, WorkoutLog, ChatMessage, Meal, ProgressPhoto, Achievement, PushSubscription, Recipe, PushLog, Client, ClientNote, ClientMeasurement
 from planner import generate_plan
 from ai_trainer import ask_ai_trainer
 from auth import hash_password, verify_password, create_token, get_user_id_from_token
@@ -62,6 +62,21 @@ def check_own(authorization: Optional[str], user_id: int) -> int:
     if token_user_id != user_id:
         raise HTTPException(403, "Доступ запрещён")
     return token_user_id
+
+def check_trainer_owns_client(authorization: Optional[str], client_id: int) -> tuple:
+    """Проверяет, что токен валиден И что user-тренер владеет клиентом.
+    Возвращает (trainer_id, client). Или 403, если клиент чужой."""
+    trainer_id = require_auth(authorization)
+    db = SessionLocal()
+    try:
+        client = db.query(Client).get(client_id)
+        if not client:
+            raise HTTPException(404, "Клиент не найден")
+        if client.trainer_id != trainer_id:
+            raise HTTPException(403, "Это не ваш клиент")
+        return trainer_id, client
+    finally:
+        db.close()
 
 
 # ===== PYDANTIC-МОДЕЛИ =====
@@ -123,6 +138,31 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: str
     password: str
+
+class ClientIn(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    goal: Optional[str] = None
+    age: Optional[int] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    notes: Optional[str] = None
+    status: Optional[str] = "active"
+
+
+class ClientNoteIn(BaseModel):
+    text: str
+
+
+class ClientMeasurementIn(BaseModel):
+    weight: Optional[float] = None
+    chest: Optional[float] = None
+    waist: Optional[float] = None
+    hips: Optional[float] = None
+    arm: Optional[float] = None
+    leg: Optional[float] = None
+    note: Optional[str] = None
 
 
 # ===== ПРОФИЛЬ =====
@@ -658,6 +698,326 @@ def get_muscle_groups(
         "groups": result_groups,
         "recommendations": recommendations,
     }
+
+    # ===== ТРЕНЕР: КЛИЕНТЫ =====
+
+@app.get("/api/trainer/clients")
+def list_clients(
+    status: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+):
+    """Список клиентов текущего тренера. Параметр status: active / archived."""
+    trainer_id = require_auth(authorization)
+    db = SessionLocal()
+    try:
+        q = db.query(Client).filter(Client.trainer_id == trainer_id)
+        if status:
+            q = q.filter(Client.status == status)
+        rows = q.order_by(Client.status.asc(), Client.name.asc()).all()
+
+        result = []
+        for c in rows:
+            # Последняя тренировка (для отображения в списке)
+            last_note = (
+                db.query(ClientNote)
+                .filter(ClientNote.client_id == c.id)
+                .order_by(ClientNote.date.desc())
+                .first()
+            )
+            result.append({
+                "id": c.id,
+                "name": c.name,
+                "phone": c.phone,
+                "email": c.email,
+                "goal": c.goal,
+                "age": c.age,
+                "height": c.height,
+                "weight": c.weight,
+                "status": c.status,
+                "notes": c.notes,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "last_note_date": last_note.date.isoformat() if last_note else None,
+                "last_note_text": last_note.text if last_note else None,
+            })
+        return result
+    finally:
+        db.close()
+
+
+@app.post("/api/trainer/clients")
+def create_client(
+    data: ClientIn,
+    authorization: Optional[str] = Header(None),
+):
+    """Создаёт нового клиента. Привязан к текущему тренеру."""
+    trainer_id = require_auth(authorization)
+    db = SessionLocal()
+    try:
+        client = Client(
+            trainer_id=trainer_id,
+            name=data.name,
+            phone=data.phone,
+            email=data.email,
+            goal=data.goal,
+            age=data.age,
+            height=data.height,
+            weight=data.weight,
+            notes=data.notes,
+            status=data.status or "active",
+        )
+        db.add(client)
+        db.commit()
+        db.refresh(client)
+        return {"ok": True, "id": client.id}
+    finally:
+        db.close()
+
+
+@app.get("/api/trainer/clients/{client_id}")
+def get_client(
+    client_id: int,
+    authorization: Optional[str] = Header(None),
+):
+    """Карточка клиента с заметками и замерами."""
+    _, client = check_trainer_owns_client(authorization, client_id)
+    db = SessionLocal()
+    try:
+        notes = (
+            db.query(ClientNote)
+            .filter(ClientNote.client_id == client_id)
+            .order_by(ClientNote.date.desc())
+            .all()
+        )
+        measurements = (
+            db.query(ClientMeasurement)
+            .filter(ClientMeasurement.client_id == client_id)
+            .order_by(ClientMeasurement.date.desc())
+            .all()
+        )
+        return {
+            "id": client.id,
+            "name": client.name,
+            "phone": client.phone,
+            "email": client.email,
+            "goal": client.goal,
+            "age": client.age,
+            "height": client.height,
+            "weight": client.weight,
+            "notes": client.notes,
+            "status": client.status,
+            "created_at": client.created_at.isoformat() if client.created_at else None,
+            "notes_list": [
+                {"id": n.id, "date": n.date.isoformat(), "text": n.text}
+                for n in notes
+            ],
+            "measurements": [
+                {
+                    "id": m.id,
+                    "date": m.date.isoformat(),
+                    "weight": m.weight,
+                    "chest": m.chest,
+                    "waist": m.waist,
+                    "hips": m.hips,
+                    "arm": m.arm,
+                    "leg": m.leg,
+                    "note": m.note,
+                }
+                for m in measurements
+            ],
+        }
+    finally:
+        db.close()
+
+
+@app.put("/api/trainer/clients/{client_id}")
+def update_client(
+    client_id: int,
+    data: ClientIn,
+    authorization: Optional[str] = Header(None),
+):
+    """Обновляет карточку клиента."""
+    _, client = check_trainer_owns_client(authorization, client_id)
+    db = SessionLocal()
+    try:
+        client.name = data.name
+        client.phone = data.phone
+        client.email = data.email
+        client.goal = data.goal
+        client.age = data.age
+        client.height = data.height
+        client.weight = data.weight
+        client.notes = data.notes
+        if data.status:
+            client.status = data.status
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+@app.delete("/api/trainer/clients/{client_id}")
+def delete_client(
+    client_id: int,
+    authorization: Optional[str] = Header(None),
+):
+    """Удаляет клиента вместе с его заметками и замерами."""
+    _, client = check_trainer_owns_client(authorization, client_id)
+    db = SessionLocal()
+    try:
+        db.query(ClientNote).filter(ClientNote.client_id == client_id).delete()
+        db.query(ClientMeasurement).filter(ClientMeasurement.client_id == client_id).delete()
+        db.delete(client)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+# ===== ТРЕНЕР: ЗАМЕТКИ =====
+
+@app.get("/api/trainer/clients/{client_id}/notes")
+def list_notes(
+    client_id: int,
+    authorization: Optional[str] = Header(None),
+):
+    check_trainer_owns_client(authorization, client_id)
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(ClientNote)
+            .filter(ClientNote.client_id == client_id)
+            .order_by(ClientNote.date.desc())
+            .all()
+        )
+        return [
+            {"id": n.id, "date": n.date.isoformat(), "text": n.text}
+            for n in rows
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/trainer/clients/{client_id}/notes")
+def add_note(
+    client_id: int,
+    data: ClientNoteIn,
+    authorization: Optional[str] = Header(None),
+):
+    check_trainer_owns_client(authorization, client_id)
+    db = SessionLocal()
+    try:
+        note = ClientNote(client_id=client_id, text=data.text)
+        db.add(note)
+        db.commit()
+        db.refresh(note)
+        return {"ok": True, "id": note.id, "date": note.date.isoformat()}
+    finally:
+        db.close()
+
+
+@app.delete("/api/trainer/notes/{note_id}")
+def delete_note(
+    note_id: int,
+    authorization: Optional[str] = Header(None),
+):
+    trainer_id = require_auth(authorization)
+    db = SessionLocal()
+    try:
+        note = db.query(ClientNote).get(note_id)
+        if not note:
+            raise HTTPException(404, "Заметка не найдена")
+        client = db.query(Client).get(note.client_id)
+        if not client or client.trainer_id != trainer_id:
+            raise HTTPException(403, "Доступ запрещён")
+        db.delete(note)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+# ===== ТРЕНЕР: ЗАМЕРЫ =====
+
+@app.get("/api/trainer/clients/{client_id}/measurements")
+def list_measurements(
+    client_id: int,
+    authorization: Optional[str] = Header(None),
+):
+    check_trainer_owns_client(authorization, client_id)
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(ClientMeasurement)
+            .filter(ClientMeasurement.client_id == client_id)
+            .order_by(ClientMeasurement.date.desc())
+            .all()
+        )
+        return [
+            {
+                "id": m.id,
+                "date": m.date.isoformat(),
+                "weight": m.weight,
+                "chest": m.chest,
+                "waist": m.waist,
+                "hips": m.hips,
+                "arm": m.arm,
+                "leg": m.leg,
+                "note": m.note,
+            }
+            for m in rows
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/trainer/clients/{client_id}/measurements")
+def add_measurement(
+    client_id: int,
+    data: ClientMeasurementIn,
+    authorization: Optional[str] = Header(None),
+):
+    check_trainer_owns_client(authorization, client_id)
+    db = SessionLocal()
+    try:
+        m = ClientMeasurement(
+            client_id=client_id,
+            weight=data.weight,
+            chest=data.chest,
+            waist=data.waist,
+            hips=data.hips,
+            arm=data.arm,
+            leg=data.leg,
+            note=data.note,
+        )
+        db.add(m)
+        db.commit()
+        db.refresh(m)
+        return {"ok": True, "id": m.id, "date": m.date.isoformat()}
+    finally:
+        db.close()
+
+
+@app.delete("/api/trainer/measurements/{measurement_id}")
+def delete_measurement(
+    measurement_id: int,
+    authorization: Optional[str] = Header(None),
+):
+    trainer_id = require_auth(authorization)
+    db = SessionLocal()
+    try:
+        m = db.query(ClientMeasurement).get(measurement_id)
+        if not m:
+            raise HTTPException(404, "Замер не найден")
+        client = db.query(Client).get(m.client_id)
+        if not client or client.trainer_id != trainer_id:
+            raise HTTPException(403, "Доступ запрещён")
+        db.delete(m)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
 
 # ===== АВТОРИЗАЦИЯ =====
 
