@@ -29,6 +29,7 @@ class User(Base):
     days_per_week = Column(Integer)
     equipment = Column(String)
     injuries = Column(String)
+    role = Column(String, default="self")
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
