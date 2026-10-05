@@ -250,6 +250,7 @@ if (profileForm) {
 // ===== ПОКАЗ ОСНОВНОГО ЭКРАНА =====
 async function showMain() {
   showScreen("main");
+  applyRole();
   await loadProfileName();
   loadPlan();
   loadLogs();
