@@ -146,6 +146,7 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
     days_per_week: +f.days_per_week.value,
     equipment,
     injuries,
+    role: (f.querySelector('input[name="role"]:checked') || {}).value || "self",
   };
 
   const oldId = localStorage.getItem("userId");
@@ -170,6 +171,7 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
     userId = String(data.user_id);
     localStorage.setItem("token", token);
     localStorage.setItem("userId", userId);
+    if (data.role) localStorage.setItem("role", data.role);
     f.reset();
     showToast("Аккаунт создан ✓", "success");
     showMain();
@@ -261,8 +263,20 @@ async function loadProfileName() {
     const res = await apiFetch(`/api/profile/${userId}`);
     const p = await res.json();
     document.getElementById("profile-name").textContent = `👤 ${p.name}`;
+    if (p.role) {
+      localStorage.setItem("role", p.role);
+      applyRole();
+    }
   } catch (err) {
     document.getElementById("profile-name").textContent = "👤 Профиль";
+  }
+}
+
+function applyRole() {
+  const role = localStorage.getItem("role") || "self";
+  const clientsTab = document.querySelector('.tab[data-tab="clients"]');
+  if (clientsTab) {
+    clientsTab.style.display = role === "trainer" ? "" : "none";
   }
 }
 

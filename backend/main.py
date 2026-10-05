@@ -133,6 +133,7 @@ class RegisterIn(BaseModel):
     equipment: List[str]
     injuries: List[str] = []
     link_user_id: Optional[int] = None
+    role: Optional[str] = "self"
 
 
 class LoginIn(BaseModel):
@@ -190,11 +191,12 @@ def _get_profile_data(user_id: int):
     db.close()
     if not u:
         raise HTTPException(404, "Пользователь не найден")
-    return {
+        return {
         "id": u.id, "name": u.name, "gender": u.gender, "age": u.age,
         "weight": u.weight, "height": u.height, "experience": u.experience,
         "goal": u.goal, "days_per_week": u.days_per_week,
         "equipment": json.loads(u.equipment), "injuries": json.loads(u.injuries),
+        "role": u.role or "self",
     }
 
 
@@ -1047,6 +1049,7 @@ def register(r: RegisterIn):
         user.days_per_week = r.days_per_week
         user.equipment = json.dumps(r.equipment)
         user.injuries = json.dumps(r.injuries)
+        user.role = r.role or "self" 
     else:
         user = User(
             email=r.email.lower(),
@@ -1057,6 +1060,7 @@ def register(r: RegisterIn):
             days_per_week=r.days_per_week,
             equipment=json.dumps(r.equipment),
             injuries=json.dumps(r.injuries),
+            role=r.role or "self",
         )
         db.add(user)
 
@@ -1068,6 +1072,7 @@ def register(r: RegisterIn):
     return {
         "token": create_token(user_id),
         "user_id": user_id,
+        "role": user.role or "self",
     }
 
 

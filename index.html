@@ -126,6 +126,16 @@
       <input name="email" type="email" placeholder="Email" required autocomplete="email">
       <input name="password" type="password" placeholder="Пароль (минимум 5 символов)" required minlength="5" autocomplete="new-password">
       <input name="name" placeholder="Имя" required>
+      <div class="role-picker">
+  <label class="role-option">
+    <input type="radio" name="role" value="self" checked>
+    <span>🏋️ Я тренируюсь сам</span>
+  </label>
+  <label class="role-option">
+    <input type="radio" name="role" value="trainer">
+    <span>👥 Я фитнес-тренер</span>
+  </label>
+</div>
       <select name="gender" required>
         <option value="">Пол</option>
         <option value="male">Мужской</option>
@@ -212,6 +222,7 @@
     </div>
 
     <div class="tabs">
+      <button data-tab="clients" class="tab" style="display:none;">👥 Клиенты</button>
       <button data-tab="plan" class="tab active">📋 План</button>
       <button data-tab="chat" class="tab">🤖 Тренер</button>
       <button data-tab="log" class="tab">📝 Дневник</button>
@@ -419,6 +430,17 @@
       </div>
 
       <div id="calendar-grid" class="calendar-grid"></div>
+    </div>
+        <!-- КЛИЕНТЫ (только для тренера) -->
+    <div id="tab-clients" class="tab-content">
+      <div class="clients-header">
+        <h3>👥 Мои клиенты</h3>
+        <button id="client-add-btn" class="btn-primary">+ Новый клиент</button>
+      </div>
+      <div id="clients-list"></div>
+      <div id="clients-empty" class="hint" style="display:none;">
+        Пока нет клиентов. Нажми «+ Новый клиент», чтобы начать.
+      </div>
     </div>
   </section>
 
@@ -629,6 +651,7 @@
   </div>
 <script src="app3.js"></script>
 <script src="install.js"></script>
+<script src="trainer.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -638,6 +661,27 @@
       });
     }
   </script>
+    <!-- Модалка клиента -->
+  <div id="client-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:520px;">
+      <button id="client-modal-close" class="modal-close">✕</button>
+      <h3 id="client-modal-title">👥 Новый клиент</h3>
+      <form id="client-form">
+        <input type="hidden" name="client_id" value="">
+        <input name="name" placeholder="Имя *" required>
+        <input name="phone" placeholder="Телефон">
+        <input name="email" type="email" placeholder="Email">
+        <input name="goal" placeholder="Цель (похудение / масса / сила)">
+        <div class="row">
+          <input name="age" type="number" min="10" max="100" placeholder="Возраст">
+          <input name="height" type="number" min="100" step="1" placeholder="Рост (см)">
+          <input name="weight" type="number" min="20" step="0.1" placeholder="Вес (кг)">
+        </div>
+        <textarea name="notes" placeholder="Заметки" rows="3"></textarea>
+        <button type="submit">Сохранить</button>
+      </form>
+    </div>
+  </div>
   <!-- Модалка установки PWA -->
 <div id="installModal" class="install-modal-overlay">
     <div class="install-modal">
